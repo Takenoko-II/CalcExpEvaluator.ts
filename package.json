@@ -1,0 +1,16 @@
+{
+    "name": "calc_exp_evaluator",
+    "version": "1.0.0",
+    "description": "",
+    "main": "test.js",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "Takenoko-II",
+    "license": "ISC",
+    "dependencies": {
+        "typescript": "^5.5.3"
+    }
+}
