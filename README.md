@@ -9,6 +9,10 @@
 
 ## Usage
 
+### 導入
+[このファイル](/src/CalcExpEvaluator.ts)を適当な場所に置けばok
+<br>~~js?知りません~~
+
 ### 計算
 `CalcExpEvaluator.newDefaultEvaluator()`は新しくデフォルトの計算機のインスタンスを作成する関数
 <br>`new CalcExpEvaluator()`で何も定義されていないインスタンスを作成することも可能
