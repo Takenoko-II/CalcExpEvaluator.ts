@@ -33,25 +33,49 @@ const immutableConfiguration: ImmutableConfiguration = {
     PARENTHESIS: ['(', ')']
 } as const;
 
+/**
+ * {@link ImmutableCalcExpEvaluator.evaluate()}から投げられるエラーのクラス
+ */
 export class CalcExpEvaluationError extends Error {
     public constructor(message: string, cause?: unknown) {
         (cause === undefined) ? super(message) : super(message, { cause });
     }
 }
 
+/**
+ * {@link ImmutableCalcExpEvaluator}の既存の定義を操作する際に使用する、定義カテゴリを表現するクラス
+ */
 export class CalcContextDeclarationCategory<T> {
     private constructor() {}
 
+    /**
+     * 定数
+     */
     public static readonly CONSTANT: CalcContextDeclarationCategory<number> = new CalcContextDeclarationCategory();
 
+    /**
+     * 関数
+     */
     public static readonly FUNCTION: CalcContextDeclarationCategory<(args: number[]) => number> = new CalcContextDeclarationCategory();
 
+    /**
+     * 2つの値について操作する演算子
+     */
     public static readonly OPERATOR: CalcContextDeclarationCategory<(x: number, y: number) => number> = new CalcContextDeclarationCategory();
 
+    /**
+     * 1つの値について操作する演算子
+     */
     public static readonly SELF_OPERATOR: CalcContextDeclarationCategory<(x: number) => number> = new CalcContextDeclarationCategory();
 }
 
+/**
+ * {@link CalcExpEvaluator.declare()}で定義するものの種類を指定するためのクラス
+ */
 export class CalcContextDeclarationCreator<T, U> {
+    /**
+     * 定義カテゴリ
+     */
     public readonly category: CalcContextDeclarationCategory<U>;
 
     private constructor(category: CalcContextDeclarationCategory<U>, modifier: (declarer: CalcContextDeclarationCreator<T, U>) => void) {
@@ -59,22 +83,41 @@ export class CalcContextDeclarationCreator<T, U> {
         modifier(this);
     }
 
+    /**
+     * {@link CalcExpEvaluator.declare()}の第三引数を型変換するための関数(外部からの呼び出し非推奨)
+     * @param value 型変換する値
+     */
     public constant(value: T): number {
         throw new TypeError("このインスタンスからは呼び出せません");
     }
 
+    /**
+     * {@link CalcExpEvaluator.declare()}の第三引数を型変換するための関数(外部からの呼び出し非推奨)
+     * @param value 型変換する値
+     */
     public function(value: T): (args: number[]) => number {
         throw new TypeError("このインスタンスからは呼び出せません");
     }
 
+    /**
+     * {@link CalcExpEvaluator.declare()}の第三引数を型変換するための関数(外部からの呼び出し非推奨)
+     * @param value 型変換する値
+     */
     public operator(value: T): (x: number, y: number) => number {
         throw new TypeError("このインスタンスからは呼び出せません");
     }
 
+    /**
+     * {@link CalcExpEvaluator.declare()}の第三引数を型変換するための関数(外部からの呼び出し非推奨)
+     * @param value 型変換する値
+     */
     public selfOperator(value: T): (x: number) => number {
         throw new TypeError("このインスタンスからは呼び出せません");
     }
 
+    /**
+     * 定数
+     */
     public static readonly CONSTANT: CalcContextDeclarationCreator<number, number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.CONSTANT,
         declarer => {
@@ -82,6 +125,9 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 可変長引数の関数
+     */
     public static readonly FUNCTION_VARIABLE_LENGTH_ARGS: CalcContextDeclarationCreator<(args: number[]) => number, (args: number[]) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.FUNCTION,
         declarer => {
@@ -91,6 +137,9 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 引数を取らない関数
+     */
     public static readonly FUNCTION_NO_ARGS: CalcContextDeclarationCreator<() => number, (args: number[]) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.FUNCTION,
         declarer => {
@@ -105,6 +154,9 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 引数を一つ取る関数
+     */
     public static readonly FUNCTION_1_ARG: CalcContextDeclarationCreator<(x: number) => number, (args: number[]) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.FUNCTION,
         declarer => {
@@ -119,6 +171,9 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 引数を二つ取る関数
+     */
     public static readonly FUNCTION_2_ARGS: CalcContextDeclarationCreator<(x: number, y: number) => number, (args: number[]) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.FUNCTION,
         declarer => {
@@ -133,6 +188,9 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 優先度が三番目に高い(最も低い)演算子
+     */
     public static readonly OPERATOR_POLYNOMIAL: CalcContextDeclarationCreator<(x: number, y: number) => number, (x: number, y: number) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.OPERATOR,
         declarer => {
@@ -140,6 +198,9 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 優先度が二番目に高い演算子
+     */
     public static readonly OPERATOR_MONOMIAL: CalcContextDeclarationCreator<(x: number, y: number) => number, (x: number, y: number) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.OPERATOR,
         declarer => {
@@ -147,6 +208,9 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 優先度が一番目に高い(最も高い)演算子
+     */
     public static readonly OPERATOR_FACTOR: CalcContextDeclarationCreator<(x: number, y: number) => number, (x: number, y: number) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.OPERATOR,
         declarer => {
@@ -154,6 +218,10 @@ export class CalcContextDeclarationCreator<T, U> {
         }
     );
 
+    /**
+     * 優先度が{@link CalcContextDeclarationCreator.OPERATOR_FACTOR}と同じであるため仕様非推奨な、因数の直後に付く演算子
+     * @deprecated
+     */
     public static readonly SELF_OPERATOR_NUMBER_SUFFIX: CalcContextDeclarationCreator<(x: number) => number, (x: number) => number> = new CalcContextDeclarationCreator(
         CalcContextDeclarationCategory.SELF_OPERATOR,
         declarer => {
@@ -569,16 +637,22 @@ export class ImmutableCalcExpEvaluator {
     public evaluate(expression: string): number {
         this.expression = expression;
 
-        const value: number = this.index();
+        try {
+            const value: number = this.index();
 
-        if (Number.isNaN(value)) {
-            throw new CalcExpEvaluationError("式からNaNが出力されました");
+            if (Number.isNaN(value)) {
+                throw new CalcExpEvaluationError("式からNaNが出力されました");
+            }
+    
+            return value;
         }
-
-        this.location = 0;
-        this.expression = "";
-
-        return value;
+        catch (e) {
+            throw e;
+        }
+        finally {
+            this.location = 0;
+            this.expression = "";
+        }
     }
 
     public isDeclared<T>(name: string, category: CalcContextDeclarationCategory<T>): boolean {
@@ -752,7 +826,8 @@ export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
         evaluator.declare("/", CalcContextDeclarationCreator.OPERATOR_MONOMIAL, (x, y) => x / y);
         evaluator.declare("%", CalcContextDeclarationCreator.OPERATOR_MONOMIAL, (x, y) => x % y);
         evaluator.declare("**", CalcContextDeclarationCreator.OPERATOR_FACTOR, (x, y) => x ** y);
-        evaluator.declare("!", CalcContextDeclarationCreator.SELF_OPERATOR_NUMBER_SUFFIX, x => {
+
+        /*evaluator.declare("!", CalcContextDeclarationCreator.SELF_OPERATOR_NUMBER_SUFFIX, x => {
             if (!Number.isInteger(x)) throw new TypeError("階乗演算子は実質的な整数の値にのみ使用できます");
             else if (x < 0) throw new TypeError("階乗演算子は負の値に使用できません");
             else if (x > 127) throw new TypeError("階乗演算子は127!を超えた値を計算できないよう制限されています");
@@ -763,7 +838,7 @@ export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
             }
 
             return result;
-        });
+        });*/
 
         // ビット演算
         evaluator.declare("&", CalcContextDeclarationCreator.OPERATOR_FACTOR, (x, y) => {
@@ -818,6 +893,18 @@ export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
         evaluator.declare("to_degrees", CalcContextDeclarationCreator.FUNCTION_1_ARG, radian => radian * 180 / Math.PI);
         evaluator.declare("to_radians", CalcContextDeclarationCreator.FUNCTION_1_ARG, degree => degree * Math.PI / 180);
         evaluator.declare("log10", CalcContextDeclarationCreator.FUNCTION_1_ARG, Math.log10);
+        evaluator.declare("factorial", CalcContextDeclarationCreator.FUNCTION_1_ARG, value => {
+            if (!Number.isInteger(value)) throw new TypeError("階乗演算子は実質的な整数の値にのみ使用できます");
+            else if (value < 0) throw new TypeError("階乗演算子は負の値に使用できません");
+            else if (value > 127) throw new TypeError("階乗演算子は127!を超えた値を計算できないよう制限されています");
+
+            let result = 1;
+            for (let i = 2; i <= value; i++) {
+                result *= i;
+            }
+
+            return result;
+        });
 
         // 引数2の関数
         evaluator.declare("log", CalcContextDeclarationCreator.FUNCTION_2_ARGS, Math.log);
