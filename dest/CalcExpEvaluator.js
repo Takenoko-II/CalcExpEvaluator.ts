@@ -109,13 +109,13 @@ export class ImmutableCalcExpEvaluator {
     isOver() {
         return this.location >= this.expression.length;
     }
-    next(next) {
-        if (next === undefined) {
+    next(next = true) {
+        if (typeof next === "boolean") {
             if (this.isOver()) {
                 throw new CalcExpEvaluationError("文字数を超えた位置へのアクセスが発生しました");
             }
             const current = this.expression.charAt(this.location++);
-            if (immutableConfiguration.IGNORED.includes(current))
+            if (immutableConfiguration.IGNORED.includes(current) && next)
                 return this.next();
             return current;
         }
@@ -189,7 +189,7 @@ export class ImmutableCalcExpEvaluator {
         else {
             let dotAlreadyAppended = false;
             while (!this.isOver()) {
-                const current = this.next();
+                const current = this.next(false);
                 if (immutableConfiguration.NUMBER_CHARS.includes(current)) {
                     string += current;
                 }

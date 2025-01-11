@@ -27,3 +27,5 @@ console.log(evaluator.evaluate("myInteligence")); // 2
 // 数を定数としてオーバーライド(???)
 evaluator.declare("57", CalcContextDeclarationCreator.CONSTANT, 1);
 console.log(evaluator.evaluate("57 + 57")); // 2
+evaluator.declare("2", CalcContextDeclarationCreator.OPERATOR_POLYNOMIAL, (x, y) => x + y);
+console.log(evaluator.evaluate("2 2 2"));
