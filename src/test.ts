@@ -27,8 +27,3 @@ console.log(evaluator.evaluate("myInteligence")); // 2
 
 evaluator.declare("57", CalcContextDeclarationCreator.CONSTANT, 1);
 console.log(evaluator.evaluate("57 + 57")); // 2
-
-const e = ImmutableCalcExpEvaluator.newImmutableEvaluator(evaluator => {
-    evaluator.allowNaN = true;
-    evaluator.declare("foo", CalcContextDeclarationCreator.CONSTANT, 1);
-});

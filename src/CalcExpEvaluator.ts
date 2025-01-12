@@ -958,9 +958,9 @@ export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
         evaluator.declare("to_radians", CalcContextDeclarationCreator.FUNCTION_1_ARG, degree => degree * Math.PI / 180);
         evaluator.declare("log10", CalcContextDeclarationCreator.FUNCTION_1_ARG, Math.log10);
         evaluator.declare("factorial", CalcContextDeclarationCreator.FUNCTION_1_ARG, value => {
-            if (!Number.isInteger(value)) throw new TypeError("階乗演算子は実質的な整数の値にのみ使用できます");
-            else if (value < 0) throw new TypeError("階乗演算子は負の値に使用できません");
-            else if (value > 127) throw new TypeError("階乗演算子は127!を超えた値を計算できないよう制限されています");
+            if (!Number.isInteger(value)) throw new TypeError("階乗は実質的な整数の値にのみ使用できます");
+            else if (value < 0) throw new TypeError("階乗は負の値に使用できません");
+            else if (value > 127) throw new TypeError("階乗は127!を超えた値を計算できないよう制限されています");
 
             let result = 1;
             for (let i = 2; i <= value; i++) {
