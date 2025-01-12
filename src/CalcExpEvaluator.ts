@@ -1,9 +1,9 @@
 interface ImmutableConfiguration {
-    readonly IGNORED: string[];
+    readonly IGNORED: readonly string[];
 
-    readonly SIGNS: [string, string];
+    readonly SIGNS: readonly [string, string];
 
-    readonly NUMBER_CHARS: string[];
+    readonly NUMBER_CHARS: readonly string[];
 
     readonly NUMBER_PARSER: (input: string) => number;
 
@@ -11,27 +11,28 @@ interface ImmutableConfiguration {
 
     readonly COMMA: string;
 
-    readonly PARENTHESIS: [string, string];
+    readonly PARENTHESIS: readonly [string, string];
 }
 
+/**
+ * なにも変えないで！
+ */
 const immutableConfiguration: ImmutableConfiguration = {
     IGNORED: [' ', '\n'],
     SIGNS: ['+', '-'],
     NUMBER_CHARS: "0123456789".split(""),
     NUMBER_PARSER: (input: string) => {
-        const value: number = Number.parseFloat(input);
-
-        if (Number.isNaN(value)) {
-            throw new CalcExpEvaluationError("数値の解析に失敗しました: '" + input + "'");
+        if (/^[+-]?(?:(?:\d+(?:\.\d+)?)|Infinity|NaN)$/g.test(input)) {
+            return Number.parseFloat(input);
         }
         else {
-            return value;
+            throw new CalcExpEvaluationError("数値の解析に失敗しました: '" + input + "'");
         }
     },
     DECIMAL_POINT: '.',
     COMMA: ',',
     PARENTHESIS: ['(', ')']
-} as const;
+};
 
 /**
  * {@link ImmutableCalcExpEvaluator.evaluate()}から投げられるエラーのクラス
@@ -342,14 +343,26 @@ export class ImmutableCalcExpEvaluator {
 
         if (this.isFunction()) {
             try {
-                string += this.getFunction()(this.arguments());
+                const returnValue = this.getFunction()(this.arguments());
+
+                if (typeof returnValue !== "number") {
+                    throw new CalcExpEvaluationError("関数の戻り値の型が無効です: " + typeof returnValue);
+                }
+
+                string += returnValue;
             }
             catch (e) {
-                throw new CalcExpEvaluationError("関数が例外を投げました", e);
+                throw new CalcExpEvaluationError("関数の呼び出しで例外が発生しました", e);
             }
         }
         else if (this.isConst()) {
-            string += this.getConst();
+            const returnValue = this.getConst();
+
+            if (typeof returnValue !== "number") {
+                throw new CalcExpEvaluationError("定数から取り出された値の型が無効です: " + typeof returnValue);
+            }
+
+            string += returnValue;
         }
         else if (immutableConfiguration.SIGNS.some(sign => this.test(sign)) || this.test(immutableConfiguration.PARENTHESIS[0])) {
             const value: number = this.polynomial();
@@ -578,13 +591,7 @@ export class ImmutableCalcExpEvaluator {
     private getConst(): number {
         for (const name of this.sortIteratorInLongestOrder(this.CONSTANTS.keys())) {
             if (this.next(name)) {
-                const value = this.CONSTANTS.get(name);
-
-                if (value === undefined) {
-                    throw new CalcExpEvaluationError("NEVER HAPPENS");
-                }
-
-                return value;
+                return this.CONSTANTS.get(name) as number;
             }
         }
 
@@ -609,7 +616,7 @@ export class ImmutableCalcExpEvaluator {
                 this.next(name);
 
                 if (value === undefined) {
-                    throw new CalcExpEvaluationError("NEVER HAPPENS");
+                    throw new CalcExpEvaluationError("関数名に紐づけられた値がundefinedでした");
                 }
                 else {
                     return value;
@@ -622,7 +629,6 @@ export class ImmutableCalcExpEvaluator {
 
     private index(): number {
         if (this.location != 0) {
-            this.location = 0;
             throw new CalcExpEvaluationError("カーソル位置が0ではありませんでした インスタンス自身がevaluate()を呼び出した可能性があります");
         }
 
@@ -801,7 +807,7 @@ export class ImmutableCalcExpEvaluator {
         }
     }
 
-    protected copyContext(value: ImmutableCalcExpEvaluator): void {
+    protected copyContextTo(value: ImmutableCalcExpEvaluator): void {
         value.CONSTANTS.clear();
         value.FUNCTIONS.clear();
         value.POLYNOMIAL_OPERATORS.clear();
@@ -840,7 +846,7 @@ export class ImmutableCalcExpEvaluator {
      */
     public clone(): ImmutableCalcExpEvaluator {
         const clone = new ImmutableCalcExpEvaluator(this.allowNaN);
-        this.copyContext(clone);
+        this.copyContextTo(clone);
         return clone;
     }
 
@@ -853,7 +859,7 @@ export class ImmutableCalcExpEvaluator {
         const evaluator = new CalcExpEvaluator();
         initializer(evaluator);
         const immutable = new ImmutableCalcExpEvaluator(evaluator.allowNaN);
-        evaluator.copyContext(immutable);
+        evaluator.copyContextTo(immutable);
         return immutable;
     }
 }
@@ -875,7 +881,7 @@ export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
 
     public override clone(): CalcExpEvaluator {
         const clone = new CalcExpEvaluator();
-        this.copyContext(clone);
+        this.copyContextTo(clone);
         clone.allowNaN = this.allowNaN;
         return clone;
     }
