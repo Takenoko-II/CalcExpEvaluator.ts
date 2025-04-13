@@ -1,4 +1,4 @@
-import { CalcExpEvaluator, CalcContextDeclarationCreator, ImmutableCalcExpEvaluator } from "./CalcExpEvaluator.js";
+import { CalcExpEvaluator, CalcContextDeclarationCreator } from "./CalcExpEvaluator.js";
 
 const evaluator = CalcExpEvaluator.newDefaultEvaluator();
 
@@ -27,3 +27,5 @@ console.log(evaluator.evaluate("myInteligence")); // 2
 
 evaluator.declare("57", CalcContextDeclarationCreator.CONSTANT, 1);
 console.log(evaluator.evaluate("57 + 57")); // 2
+
+console.log(evaluator.evaluate("factorial(127)"));
