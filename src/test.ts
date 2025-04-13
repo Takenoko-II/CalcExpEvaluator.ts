@@ -1,4 +1,4 @@
-import { CalcExpEvaluator, CalcContextDeclarationCreator } from "./CalcExpEvaluator.js";
+import { CalcExpEvaluator, ImmutableCalcExpEvaluator, FunctionArgCount, OperatorPriority, RegistryKey, EvaluatorConfiguration } from "./CalcExpEvaluator.js";
 
 const evaluator = CalcExpEvaluator.newDefaultEvaluator();
 
@@ -13,19 +13,32 @@ console.log(evaluator.evaluate("sin(to_radians(45)) * 2")); // 1.4142...
 console.log(evaluator.evaluate("1 / Infinity")); // 0
 console.log(evaluator.evaluate("180 / PI")); // 57.295...
 
-evaluator.declare("double", CalcContextDeclarationCreator.FUNCTION_1_ARG, x => x * 2);
+evaluator.registries.get(RegistryKey.FUNCTION).register("double", {
+    argCount: FunctionArgCount.ONE,
+    call(x) {
+        return x * 2;
+    }
+});
 console.log(evaluator.evaluate("double(2) * (double(5) + 2 ** 3)")); // 4 * (10 + 8) = 72
 
-evaluator.declare("sum", CalcContextDeclarationCreator.FUNCTION_VARIABLE_LENGTH_ARGS, args => args.reduce((a, b) => a + b));
+evaluator.registries.get(RegistryKey.FUNCTION).register("sum", {
+    argCount: FunctionArgCount.VAR,
+    call(args) {
+        return args.reduce((a, b) => a + b, 0);
+    }
+});
 console.log(evaluator.evaluate("sum(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)")); // 1 + 2 + ... + 10 = 55
 
-evaluator.declare("==", CalcContextDeclarationCreator.OPERATOR_FACTOR, (x, y) => x === y ? 1 : 0);
+evaluator.registries.get(RegistryKey.OPERATOR).register("==", {
+    priority: OperatorPriority.FACTOR,
+    operate(x, y) {
+        return x === y ? 1 : 0;
+    }
+});
 console.log(evaluator.evaluate("(50 + 50) == (20 + 80)")); // 1
 
-evaluator.declare("myInteligence", CalcContextDeclarationCreator.CONSTANT, 2);
-console.log(evaluator.evaluate("myInteligence")); // 2
+evaluator.registries.get(RegistryKey.CONSTANT).register("MY_INTELIGENCE", 2);
+console.log(evaluator.evaluate("MY_INTELIGENCE")); // 2
 
-evaluator.declare("57", CalcContextDeclarationCreator.CONSTANT, 1);
+evaluator.registries.get(RegistryKey.CONSTANT).register("57", 1);
 console.log(evaluator.evaluate("57 + 57")); // 2
-
-console.log(evaluator.evaluate("factorial(127)"));
