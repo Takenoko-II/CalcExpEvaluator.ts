@@ -1,4 +1,4 @@
-import { CalcExpEvaluator, ImmutableCalcExpEvaluator, FunctionArgCount, OperatorPriority, RegistryKey, EvaluatorConfiguration } from "./CalcExpEvaluator.js";
+import { CalcExpEvaluator, ImmutableCalcExpEvaluator, FunctionArgCount, OperatorPriority, RegistryKey, EvaluatorConfiguration, Registries } from "./CalcExpEvaluator.js";
 
 const evaluator = CalcExpEvaluator.newDefaultEvaluator();
 
@@ -37,8 +37,14 @@ evaluator.registries.get(RegistryKey.OPERATOR).register("==", {
 });
 console.log(evaluator.evaluate("(50 + 50) == (20 + 80)")); // 1
 
-evaluator.registries.get(RegistryKey.CONSTANT).register("MY_INTELIGENCE", 2);
+evaluator.registries.get(RegistryKey.CONSTANT).register("MY_INTELIGENCE", {
+    value: 2
+});
 console.log(evaluator.evaluate("MY_INTELIGENCE")); // 2
 
-evaluator.registries.get(RegistryKey.CONSTANT).register("57", 1);
+evaluator.registries.get(RegistryKey.CONSTANT).register("57", {
+    value: 1
+});
 console.log(evaluator.evaluate("57 + 57")); // 2
+
+evaluator.configuration.allowNaN

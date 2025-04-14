@@ -42,41 +42,83 @@ const CHARACTER_DEFINITION: CharacterDefinition = {
  */
 export class EvaluationError extends Error {
     public constructor(message: string, cause?: unknown) {
-        (cause === undefined) ? super(message) : super(message, { cause });
+        (cause === undefined) ? super(message) : super(message + "(cause: '" + String(cause) + "')", { cause });
     }
 }
 
 /**
- * {@link ImmutableCalcExpEvaluator#evaluate()}から投げられるエラーのクラス
+ * {@link ImmutableRegistry}から投げられるエラーのクラス
  */
 export class RegistryError extends Error {
     public constructor(message: string, cause?: unknown) {
-        (cause === undefined) ? super(message) : super(message, { cause });
+        (cause === undefined) ? super(message) : super(message + "(cause: '" + String(cause) + "')", { cause });
     }
 }
 
 interface ImmutableEvaluatorConfiguration {
     /**
-     * 真の場合、計算結果が`NaN`になることを許容します    
-     * デフォルトでは`false`です
+     * `true` の場合, 計算結果が `NaN` になることを許容する    
+     * デフォルトでは `false`
      */
     readonly allowNaN: boolean;
+
+    /**
+     * `true` の場合, 式中の大文字・小文字を区別する    
+     * `false` の場合, 式中の大文字・小文字は区別されない    
+     * たとえば `foo` 関数と `Foo` 関数が定義されていた場合, どちらが使用されるかはレジストリの気分次第    
+     * デフォルトでは `true`
+     */
+    // readonly caseSensitive: boolean;
+
+    /**
+     * `true` の場合, 計算中に例外が発生したとき `NaN` が返る    
+     * デフォルトでは `false`
+     */
+    readonly neverThrows: boolean;
 }
 
 export interface EvaluatorConfiguration extends ImmutableEvaluatorConfiguration {
     allowNaN: boolean;
+
+    neverThrows: boolean;
 }
 
 export enum FunctionArgCount {
+    /**
+     * 引数なし
+     */
     NO = "NO",
+
+    /**
+     * 引数1つ
+     */
     ONE = "ONE",
+
+    /**
+     * 引数2つ
+     */
     TWO = "TWO",
+
+    /**
+     * 可変長引数
+     */
     VAR = "VAR"
 }
 
 export enum OperatorPriority {
+    /**
+     * 多項間演算用(ex: +, -)
+     */
     POLYNOMIAL = "POLYNOMIAL",
+
+    /**
+     * 単項間演算用(ex: *, /)
+     */
     MONOMIAL = "MONOMIAL",
+
+    /**
+     * 因数間演算用(ex: **)
+     */
     FACTOR = "FACTOR"
 }
 
@@ -87,21 +129,42 @@ type FunctionTypeLookup = {
     [FunctionArgCount.VAR]: (args: number[]) => number;
 }
 
-interface FunctionDef<T extends FunctionArgCount> {
+interface FunctionDeclarationInput<T extends FunctionArgCount> {
+    /**
+     * 関数の引数の数
+     */
     readonly argCount: T;
 
+    /**
+     * 関数の実装
+     */
     readonly call: FunctionTypeLookup[T];
 }
 
-interface OperatorDef<T extends OperatorPriority> {
+interface OperatorDeclarationInput<T extends OperatorPriority> {
+    /**
+     * 演算子の実装
+     * @param x 演算子の左側の値
+     * @param y 演算子の右側の値
+     */
     operate(x: number, y: number): number;
 
+    /**
+     * 演算子の優先順位
+     */
     readonly priority: T;
 }
 
-type FunctionDefUnion<T = FunctionArgCount> = T extends FunctionArgCount ? FunctionDef<T> : never;
+interface ConstantDeclarationInput {
+    /**
+     * 値
+     */
+    readonly value: number;
+}
 
-type OperatorDefUnion<T = OperatorPriority> = T extends OperatorPriority ? OperatorDef<T> : never;
+type FunctionInputUnion<T = FunctionArgCount> = T extends FunctionArgCount ? FunctionDeclarationInput<T> : never;
+
+type OperatorInputUnion<T = OperatorPriority> = T extends OperatorPriority ? OperatorDeclarationInput<T> : never;
 
 /**
  * {@link ImmutableCalcExpEvaluator}の既存の定義を操作する際に使用する、定義カテゴリを表現するクラス
@@ -114,10 +177,10 @@ abstract class Declaration<T> {
     }
 }
 
-class FunctionDeclaration extends Declaration<FunctionDefUnion> {
+class FunctionDeclaration extends Declaration<FunctionInputUnion> {
     public readonly argCount: FunctionArgCount;
 
-    public constructor(def: FunctionDefUnion) {
+    public constructor(def: FunctionInputUnion) {
         super(def);
         this.argCount = def.argCount;
     }
@@ -143,27 +206,27 @@ class FunctionDeclaration extends Declaration<FunctionDefUnion> {
         }
     }
 
-    private static isNoArg(def: FunctionDefUnion): def is FunctionDef<FunctionArgCount.NO> {
+    private static isNoArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.NO> {
         return def.argCount === FunctionArgCount.NO;
     }
 
-    private static isOneArg(def: FunctionDefUnion): def is FunctionDef<FunctionArgCount.ONE> {
+    private static isOneArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.ONE> {
         return def.argCount === FunctionArgCount.ONE;
     }
 
-    private static isTwoArg(def: FunctionDefUnion): def is FunctionDef<FunctionArgCount.TWO> {
+    private static isTwoArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.TWO> {
         return def.argCount === FunctionArgCount.TWO;
     }
 
-    private static isVarArg(def: FunctionDefUnion): def is FunctionDef<FunctionArgCount.VAR> {
+    private static isVarArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.VAR> {
         return def.argCount === FunctionArgCount.VAR;
     }
 }
 
-class OperatorDeclaration extends Declaration<OperatorDefUnion> {
+class OperatorDeclaration extends Declaration<OperatorInputUnion> {
     public readonly priority: OperatorPriority;
 
-    public constructor(def: OperatorDefUnion) {
+    public constructor(def: OperatorInputUnion) {
         super(def);
         this.priority = def.priority;
     }
@@ -173,34 +236,51 @@ class OperatorDeclaration extends Declaration<OperatorDefUnion> {
     }
 }
 
-class ConstantDeclaration extends Declaration<number> {
+class ConstantDeclaration extends Declaration<ConstantDeclarationInput> {
     public readonly value: number;
 
-    public constructor(def: number) {
+    public constructor(def: ConstantDeclarationInput) {
         super(def);
-        this.value = def;
+        this.value = def.value;
     }
 }
 
-export class RegistryKey<T, U> {
+export class RegistryKey<T, U extends Declaration<unknown>> {
     private constructor(public readonly id: string) {}
 
-    public static readonly CONSTANT = new this<number, ConstantDeclaration>("CONSTANT");
+    /**
+     * 定数のレジストリキー
+     */
+    public static readonly CONSTANT = new this<ConstantDeclarationInput, ConstantDeclaration>("CONSTANT");
 
-    public static readonly FUNCTION = new this<FunctionDefUnion, FunctionDeclaration>("FUNCTION");
+    /**
+     * 関数のレジストリキー
+     */
+    public static readonly FUNCTION = new this<FunctionInputUnion, FunctionDeclaration>("FUNCTION");
 
-    public static readonly OPERATOR = new this<OperatorDefUnion, OperatorDeclaration>("OPERATOR");
+    /**
+     * 演算子のレジストリキー
+     */
+    public static readonly OPERATOR = new this<OperatorInputUnion, OperatorDeclaration>("OPERATOR");
 }
 
 type DeclarationDescriptorMap<T> = Record<string, T>;
 
-class ImmutableRegistry<T, U> {
+class ImmutableRegistry<T, U extends Declaration<unknown>> {
     private readonly registry: Map<string, U> = new Map();
 
+    /**
+     * レジストリの参照に使用するオブジェクト
+     */
     public readonly lookup: RegistryLookup<U> = new RegistryLookup(this.registry);
 
     public constructor(private readonly registryKey: RegistryKey<T, U>, private readonly converter: (input: T) => U) {}
 
+    /**
+     * レジストリに宣言を登録する関数
+     * @param name 宣言名
+     * @param value 登録する値
+     */
     protected register(name: string, value: T): void {
         if (CHARACTER_DEFINITION.UNDECLARABLE_CHARS.some(char => name.includes(char))) {
             throw new RegistryError(`定義名に無効な文字が含まれています: ${CHARACTER_DEFINITION.UNDECLARABLE_CHARS}`);
@@ -214,6 +294,10 @@ class ImmutableRegistry<T, U> {
         }
     }
 
+    /**
+     * レジストリに複数の宣言を登録する関数
+     * @param values 複数の宣言
+     */
     protected registerByDescriptor(values: DeclarationDescriptorMap<T>) {
         for (const name of Object.keys(values)) {
             const t = values[name];
@@ -221,6 +305,10 @@ class ImmutableRegistry<T, U> {
         }
     }
 
+    /**
+     * レジストリに登録された宣言を削除する関数
+     * @param name 宣言名
+     */
     protected unregister(name: string): void {
         if (this.registry.has(name)) {
             this.registry.delete(name);
@@ -231,7 +319,7 @@ class ImmutableRegistry<T, U> {
     }
 }
 
-class Registry<T, U> extends ImmutableRegistry<T, U> {
+class Registry<T, U extends Declaration<unknown>> extends ImmutableRegistry<T, U> {
     public override register(name: string, value: T): void {
         super.register(name, value);
     }
@@ -245,22 +333,36 @@ class Registry<T, U> extends ImmutableRegistry<T, U> {
     }
 }
 
-interface RegistryLookupResult<T> {
+interface RegistryLookupResult<T extends Declaration<unknown>> {
+    /**
+     * 宣言名
+     */
     readonly name: string;
+
+    /**
+     * 定義情報
+     */
     readonly value: T;
 }
 
-class RegistryLookup<T> {
+class RegistryLookup<T extends Declaration<unknown>> {
     public constructor(private readonly registry: Map<string, T>) {}
 
+    /**
+     * 指定の宣言名が存在するかを返す関数
+     * @param name 宣言名
+     * @returns 存在すれば `true`
+     */
     public has(name: string): boolean {
         return this.registry.has(name);
     }
 
-    public getAll(): ReadonlySet<string> {
-        return new Set(this.registry.keys());
-    }
-
+    /**
+     * 宣言名から定義情報を返す関数
+     * @param name 宣言名
+     * @returns 定義情報
+     * @throws 宣言名が見つからなかった場合
+     */
     public findByOnlyName(name: string): T {
         if (this.registry.has(name)) {
             return this.registry.get(name)!;
@@ -270,6 +372,13 @@ class RegistryLookup<T> {
         }
     }
 
+    /**
+     * 宣言名と条件から定義情報を返す関数
+     * @param name 宣言名
+     * @param condition 条件
+     * @returns 定義情報
+     * @throws 宣言名が見つからなかった場合, 或いは条件を満たさなかった場合
+     */
     public find(name: string, condition: (value: T) => boolean): T {
         const value = this.findByOnlyName(name);
 
@@ -281,7 +390,12 @@ class RegistryLookup<T> {
         }
     }
 
-    public getInLongestOrder(filter?: (value: T) => boolean): RegistryLookupResult<T>[] {
+    /**
+     * 条件に一致するオブジェクト(宣言名と定義情報の双方を含む)を宣言名文字列の長い順で返す関数
+     * @param filter 条件
+     * @returns 宣言名と定義情報の双方を含むオブジェクトのソート済み配列
+     */
+    public getInNameLongestOrder(filter?: (value: T) => boolean): RegistryLookupResult<T>[] {
         const list: ({ readonly name: string; readonly value: T })[] = [];
 
         for (const name of [...this.registry.keys()].sort((a, b) => b.length - a.length)) {
@@ -306,36 +420,36 @@ class RegistryLookup<T> {
 }
 
 class ImmutableRegistries {
-    private readonly registries: Map<RegistryKey<unknown, unknown>, Registry<unknown, unknown>> = new Map();
+    private readonly registries: Map<RegistryKey<unknown, Declaration<unknown>>, Registry<unknown, Declaration<unknown>>> = new Map();
 
     public constructor();
 
     public constructor(registries: Registries);
 
     public constructor(registries?: Registries) {
-        const constantReg = this.create(RegistryKey.CONSTANT, number => new ConstantDeclaration(number));
+        const constantReg = this.create(RegistryKey.CONSTANT, cons => new ConstantDeclaration(cons));
         const funcReg = this.create(RegistryKey.FUNCTION, func => new FunctionDeclaration(func));
         const operatorReg = this.create(RegistryKey.OPERATOR, oper => new OperatorDeclaration(oper));
 
         if (registries) {
-            registries.get(RegistryKey.CONSTANT).lookup.getInLongestOrder().forEach(val => {
+            registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder().forEach(val => {
                 constantReg.register(val.name, Declaration.getInternalInput(val.value));
             });
 
-            registries.get(RegistryKey.FUNCTION).lookup.getInLongestOrder().forEach(val => {
+            registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder().forEach(val => {
                 funcReg.register(val.name, Declaration.getInternalInput(val.value));
             });
 
-            registries.get(RegistryKey.OPERATOR).lookup.getInLongestOrder().forEach(val => {
+            registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder().forEach(val => {
                 operatorReg.register(val.name, Declaration.getInternalInput(val.value));
             });
         }
     }
 
-    private create<T, U>(key: RegistryKey<T, U>, converter: (input: T) => U): Registry<T, U> {
+    private create<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>, converter: (input: T) => U): Registry<T, U> {
         if (!this.registries.has(key)) {
             const registry = new Registry(key, converter);
-            this.registries.set(key, registry as Registry<unknown, unknown>);
+            this.registries.set(key, registry as Registry<unknown, Declaration<unknown>>);
             return registry;
         }
         else {
@@ -343,25 +457,36 @@ class ImmutableRegistries {
         }
     }
 
-    public get<T, U>(key: RegistryKey<T, U>): ImmutableRegistry<T, U> {
+    /**
+     * 指定のキーに対応するレジストリを返す関数
+     * @param key レジストリキー
+     * @returns 対応するレジストリ
+     * @throws レジストリキーに対応するレジストリが見つからなかった場合
+     */
+    public get<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>): ImmutableRegistry<T, U> {
         if (this.registries.has(key)) {
-            return this.registries.get(key) as ImmutableRegistry<T, U>;
+            return this.registries.get(key) as unknown as ImmutableRegistry<T, U>;
         }
         else {
             throw new RegistryError(`レジストリ "${key.id}" が見つかりませんでした`);
         }
     }
 
+    /**
+     * 他のミュータブルインスタンスに自身と同じ情報を書き込む関数
+     * @param other 他のインスタンス
+     * @param overwrite `true` の場合, 渡されたインスタンスの状態を無視して定義を上書きする
+     */
     public copyTo(other: Registries, overwrite: boolean): void {
         for (const [registryKey, registry] of this.registries) {
-            for (const name of registry.lookup.getAll()) {
+            for (const { name, value } of registry.lookup.getInNameLongestOrder()) {
                 const otherRegistry = other.get(registryKey);
                 if (otherRegistry.lookup.has(name) && overwrite) {
                     otherRegistry.unregister(name);
-                    otherRegistry.register(name, registry.lookup.findByOnlyName(name));
+                    otherRegistry.register(name, value);
                 }
                 else {
-                    otherRegistry.register(name, registry.lookup.findByOnlyName(name));
+                    otherRegistry.register(name, value);
                 }
             }
         }
@@ -369,7 +494,7 @@ class ImmutableRegistries {
 }
 
 export class Registries extends ImmutableRegistries {
-    public override get<T, U>(key: RegistryKey<T, U>): Registry<T, U> {
+    public override get<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>): Registry<T, U> {
         return super.get(key) as Registry<T, U>;
     }
 }
@@ -379,11 +504,18 @@ export class Registries extends ImmutableRegistries {
  */
 export class ImmutableCalcExpEvaluator {
     protected static readonly CONFIGURATION_DEFAULT: ImmutableEvaluatorConfiguration = {
-        allowNaN: false
+        allowNaN: false,
+        neverThrows: false
     };
 
+    /**
+     * 宣言のレジストリを纏めたオブジェクト
+     */
     public readonly registries: ImmutableRegistries;
 
+    /**
+     * このインスタンスの設定
+     */
     public readonly configuration: ImmutableEvaluatorConfiguration;
 
     private expression: string = "";
@@ -551,7 +683,7 @@ export class ImmutableCalcExpEvaluator {
         let value: number = this.operateWithAnotherFactor(this.factor());
 
         a: while (!this.isOver()) {
-            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInLongestOrder(v => v.priority === OperatorPriority.MONOMIAL);
+            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.MONOMIAL);
 
             for (const operator of operators) {
                 if (this.next(operator.name)) {
@@ -576,7 +708,7 @@ export class ImmutableCalcExpEvaluator {
         let value: number = this.monomial();
 
         a: while (!this.isOver()) {
-            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInLongestOrder(v => v.priority === OperatorPriority.POLYNOMIAL);
+            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.POLYNOMIAL);
 
             for (const operator of operators) {
                 if (this.next(operator.name)) {
@@ -601,7 +733,7 @@ export class ImmutableCalcExpEvaluator {
         let value: number = num;
 
         a: while (!this.isOver()) {
-            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInLongestOrder(v => v.priority === OperatorPriority.FACTOR);
+            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.FACTOR);
 
             for (const operator of operators) {
                 if (this.next(operator.name)) {
@@ -685,7 +817,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private isConst(): boolean {
-        for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInLongestOrder()) {
+        for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
             if (this.test(constant.name)) {
                 return true;
             }
@@ -695,7 +827,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private getConst(): ConstantDeclaration {
-        for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInLongestOrder()) {
+        for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
             if (this.next(constant.name)) {
                 return constant.value;
             }
@@ -705,7 +837,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private isFunction(): boolean {
-        for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInLongestOrder()) {
+        for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
             if (this.test(func.name, CHARACTER_DEFINITION.PARENTHESIS[0])) {
                 return true;
             }
@@ -715,7 +847,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private getFunction(): FunctionDeclaration {
-        for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInLongestOrder()) {
+        for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
             if (this.test(func.name, CHARACTER_DEFINITION.PARENTHESIS[0])) {
                 this.next(func.name);
                 return func.value;
@@ -744,25 +876,35 @@ export class ImmutableCalcExpEvaluator {
     }
 
     /**
-     * 引数に渡された文字列を式として評価します
+     * 引数に渡された文字列を式として評価する関数
      * @param expression 式
      * @returns 計算結果
-     * @throws 文字列の解析に失敗するか、{@link ImmutableEvaluatorConfiguration#allowNaN}が`false`の状態で`NaN`が出力された際に{@link EvaluationError}をthrowします
+     * @throws 文字列の解析に失敗するか、{@link ImmutableEvaluatorConfiguration#allowNaN}が `false` の状態で `NaN` が出力された場合
      */
     public evaluate(expression: string): number {
         this.expression = expression;
+
+        const nanError = new EvaluationError("式からNaNが出力されました");;
 
         try {
             const value: number = this.index();
 
             if (Number.isNaN(value) && !this.configuration.allowNaN) {
-                throw new EvaluationError("式からNaNが出力されました");
+                throw nanError;
             }
 
             return value;
         }
         catch (e) {
-            throw e;
+            if (this.configuration.allowNaN && this.configuration.neverThrows) {
+                return NaN;
+            }
+            else if (!this.configuration.allowNaN) {
+                throw nanError;
+            }
+            else {
+                throw e;
+            }
         }
         finally {
             this.location = 0;
@@ -771,7 +913,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     /**
-     * 定義を全てコピーした新しいインスタンスを作成します
+     * 定義を全てコピーした新しいインスタンスを作成する関数
      * @returns このインスタンスの新しいクローン
      */
     public clone(): ImmutableCalcExpEvaluator {
@@ -782,7 +924,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     /**
-     * 定義を外部から追加・変更・削除することができない{@link CalcExpEvaluator}のインスタンスを作成します
+     * 定義を外部から追加・変更・削除することができない{@link CalcExpEvaluator}のインスタンスを作成する関数
      * @param initializer 初期化子
      * @returns 新しい{@link ImmutableCalcExpEvaluator}のインスタンス
      */
@@ -812,6 +954,10 @@ export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
         return clone;
     }
 
+    /**
+     * 基本的な定義が既に行われた状態のインスタンスを新しく作成する関数
+     * @returns 作成されたインスタンス
+     */
     public static newDefaultEvaluator(): CalcExpEvaluator {
         const evaluator = new CalcExpEvaluator();
 
@@ -901,11 +1047,21 @@ export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
         });
 
         constants.registerByDescriptor({
-            "NaN": NaN,
-            "PI": Math.PI,
-            "TAU": Math.PI * 2,
-            "E": Math.E,
-            "Infinity": Infinity
+            "NaN": {
+                value: NaN
+            },
+            "PI": {
+                value: Math.PI
+            },
+            "TAU": {
+                value: Math.PI * 2
+            },
+            "E": {
+                value: Math.E
+            },
+            "Infinity": {
+                value: Infinity
+            }
         });
 
         functions.registerByDescriptor({

@@ -27,7 +27,7 @@ console.log(CalcExpEvaluator.newDefaultEvaluator().evaluate("1 + 1")); // 2
 `CalcExpEvaluator#registries`は演算子・関数・定数のレジストリ
 
 ```ts
-import { CalcExpEvaluator, RegistryKey, FunctionArgCount, OperatorPriority } from "./CalcExpEvaluator.js";
+import { CalcExpEvaluator, RegistryKey, FunctionArgCount, OperatorPriority } from "./CalcExpEvaluator";
 
 const evaluator = CalcExpEvaluator.newDefaultEvaluator();
 const registires = evaluator.registries;
@@ -56,13 +56,13 @@ console.log(evaluator.evaluate("2 * g")); // -19.6
 <br>`Registry#lookup`は演算子・関数・定数の定義を取得するためのオブジェクト
 
 ```ts
-import { CalcExpEvaluator, RegistryKey } from "./CalcExpEvaluator.js";
+import { CalcExpEvaluator, RegistryKey } from "./CalcExpEvaluator";
 
 const evaluator = CalcExpEvaluator.newDefaultEvaluator();
 
-console.log(evaluator.registries.get(RegistryKey.OPERATOR).getAll()); // [+, -, *, /, %, ...]
+console.log(evaluator.registries.get(RegistryKey.OPERATOR)lookup..getInNameLongestOrder()); // [+, -, *, /, %, ...]
 evaluator.registries.get(RegistryKey.OPERATOR).unregister("/");
-console.log(evaluator.registries.get(RegistryKey.OPERATOR).getAll()); // [+, -, *, %, ...]
+console.log(evaluator.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder()); // [+, -, *, %, ...]
 
 console.log(evaluator.registries.get(RegistryKey.CONSTANT).lookup.has("NaN")); // true
 ```
