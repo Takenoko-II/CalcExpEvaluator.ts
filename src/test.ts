@@ -1,6 +1,11 @@
-import { CalcExpEvaluator, ImmutableCalcExpEvaluator, FunctionArgCount, OperatorPriority, RegistryKey, EvaluatorConfiguration, Registries } from "./CalcExpEvaluator.js";
+import { CalcExpEvaluator, ImmutableCalcExpEvaluator, FunctionArgCount, OperatorPriority, RegistryKey, Registries } from "./CalcExpEvaluator.js";
 
-const evaluator = CalcExpEvaluator.newDefaultEvaluator();
+const evaluator = new CalcExpEvaluator({
+    copySourceRegistries: Registries.DEFAULT,
+    configuration: {
+        allowNaN: true
+    }
+});
 
 console.log(evaluator.evaluate("1 + 1")); // 2
 console.log(evaluator.evaluate("3 * (2 + 7) + -14 / 2")); // 20
@@ -46,5 +51,3 @@ evaluator.registries.get(RegistryKey.CONSTANT).register("57", {
     value: 1
 });
 console.log(evaluator.evaluate("57 + 57")); // 2
-
-evaluator.configuration.allowNaN

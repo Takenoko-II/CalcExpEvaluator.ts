@@ -1,29 +1,11 @@
-interface CharacterDefinition {
-    readonly IGNORED: readonly string[];
-
-    readonly SIGNS: readonly [string, string];
-
-    readonly NUMBER_CHARS: readonly string[];
-
-    readonly NUMBER_PARSER: (input: string) => number;
-
-    readonly DECIMAL_POINT: string;
-
-    readonly COMMA: string;
-
-    readonly PARENTHESIS: readonly [string, string];
-
-    readonly UNDECLARABLE_CHARS: readonly string[];
-}
-
 /**
  * なにも変えないで！
  */
-const CHARACTER_DEFINITION: CharacterDefinition = {
+const CHARACTER_DEFINITION = {
     IGNORED: [' ', '\n'],
     SIGNS: ['+', '-'],
     NUMBER_CHARS: "0123456789".split(""),
-    NUMBER_PARSER: (input: string) => {
+    NUMBER_PARSER: (input) => {
         if (/^(?:[+-]?\d+(?:\.\d+)?(?:(?:[eE][+-]?\d+)|(?:\*10\^[+-]?\d+))?)|[+-]?Infinity|NaN$/g.test(input)) {
             return Number.parseFloat(input);
         }
@@ -36,190 +18,92 @@ const CHARACTER_DEFINITION: CharacterDefinition = {
     PARENTHESIS: ['(', ')'],
     UNDECLARABLE_CHARS: ['(', ')', ',']
 };
-
 /**
  * {@link ImmutableCalcExpEvaluator#evaluate()}から投げられるエラーのクラス
  */
 export class EvaluationError extends Error {
-    public constructor(message: string, cause?: unknown) {
+    constructor(message, cause) {
         (cause === undefined) ? super(message) : super(message + "(cause: '" + String(cause) + "')", { cause });
     }
 }
-
 /**
  * {@link ImmutableRegistry}から投げられるエラーのクラス
  */
 export class RegistryError extends Error {
-    public constructor(message: string, cause?: unknown) {
+    constructor(message, cause) {
         (cause === undefined) ? super(message) : super(message + "(cause: '" + String(cause) + "')", { cause });
     }
 }
-
-export interface OptionalEvaluatorConfiguration {
-    /**
-     * `true` の場合, 計算結果が `NaN` になることを許容する    
-     * デフォルトでは `false`
-     */
-    allowNaN?: boolean;
-
-    /**
-     * `true` の場合, 式中の大文字・小文字を区別する    
-     * `false` の場合, 式中の大文字・小文字は区別されない    
-     * たとえば `foo` 関数と `Foo` 関数が定義されていた場合, どちらが使用されるかはレジストリの気分次第    
-     * デフォルトでは `true`
-     */
-    // caseSensitive: boolean;
-
-    /**
-     * `true` の場合, 計算中に例外が発生したとき `NaN` が返る    
-     * ただし `allowNaN` が `false` の場合そちらが優先される
-     * デフォルトでは `false`
-     */
-    neverThrows?: boolean;
-}
-
-interface ImmutableEvaluatorConfiguration extends OptionalEvaluatorConfiguration {
-    /**
-     * `true` の場合, 計算結果が `NaN` になることを許容する    
-     * デフォルトでは `false`
-     */
-    readonly allowNaN: boolean;
-
-    /**
-     * `true` の場合, 式中の大文字・小文字を区別する    
-     * `false` の場合, 式中の大文字・小文字は区別されない    
-     * たとえば `foo` 関数と `Foo` 関数が定義されていた場合, どちらが使用されるかはレジストリの気分次第    
-     * デフォルトでは `true`
-     */
-    // readonly caseSensitive: boolean;
-
-    /**
-     * `true` の場合, 計算中に例外が発生したとき `NaN` が返る    
-     * デフォルトでは `false`
-     */
-    readonly neverThrows: boolean;
-}
-
-interface EvaluatorConfiguration extends ImmutableEvaluatorConfiguration {
-    allowNaN: boolean;
-
-    neverThrows: boolean;
-}
-
-export enum FunctionArgCount {
+export var FunctionArgCount;
+(function (FunctionArgCount) {
     /**
      * 引数なし
      */
-    NO = "NO",
-
+    FunctionArgCount["NO"] = "NO";
     /**
      * 引数1つ
      */
-    ONE = "ONE",
-
+    FunctionArgCount["ONE"] = "ONE";
     /**
      * 引数2つ
      */
-    TWO = "TWO",
-
+    FunctionArgCount["TWO"] = "TWO";
     /**
      * 可変長引数
      */
-    VAR = "VAR"
-}
-
-export enum OperatorPriority {
+    FunctionArgCount["VAR"] = "VAR";
+})(FunctionArgCount || (FunctionArgCount = {}));
+export var OperatorPriority;
+(function (OperatorPriority) {
     /**
      * 多項間演算用(ex: +, -)
      */
-    POLYNOMIAL = "POLYNOMIAL",
-
+    OperatorPriority["POLYNOMIAL"] = "POLYNOMIAL";
     /**
      * 単項間演算用(ex: *, /)
      */
-    MONOMIAL = "MONOMIAL",
-
+    OperatorPriority["MONOMIAL"] = "MONOMIAL";
     /**
      * 因数間演算用(ex: **)
      */
-    FACTOR = "FACTOR"
-}
-
-type FunctionTypeLookup = {
-    [FunctionArgCount.NO]: () => number;
-    [FunctionArgCount.ONE]: (x: number) => number;
-    [FunctionArgCount.TWO]: (x: number, y: number) => number;
-    [FunctionArgCount.VAR]: (args: number[]) => number;
-}
-
-interface FunctionDeclarationInput<T extends FunctionArgCount> {
-    /**
-     * 関数の引数の数
-     */
-    readonly argCount: T;
-
-    /**
-     * 関数の実装
-     */
-    readonly call: FunctionTypeLookup[T];
-}
-
-interface OperatorDeclarationInput<T extends OperatorPriority> {
-    /**
-     * 演算子の実装
-     * @param x 演算子の左側の値
-     * @param y 演算子の右側の値
-     */
-    operate(x: number, y: number): number;
-
-    /**
-     * 演算子の優先順位
-     */
-    readonly priority: T;
-}
-
-interface ConstantDeclarationInput {
-    /**
-     * 値
-     */
-    readonly value: number;
-}
-
-type FunctionInputUnion<T = FunctionArgCount> = T extends FunctionArgCount ? FunctionDeclarationInput<T> : never;
-
-type OperatorInputUnion<T = OperatorPriority> = T extends OperatorPriority ? OperatorDeclarationInput<T> : never;
-
+    OperatorPriority["FACTOR"] = "FACTOR";
+})(OperatorPriority || (OperatorPriority = {}));
 /**
  * {@link ImmutableCalcExpEvaluator}の既存の定義を操作する際に使用する、定義カテゴリを表現するクラス
  */
-abstract class Declaration<T> {
-    protected constructor(protected readonly input: T) {}
-
-    public static getInternalInput<U>(declaration: Declaration<U>): U {
+class Declaration {
+    input;
+    constructor(input) {
+        this.input = input;
+    }
+    static getInternalInput(declaration) {
         return { ...declaration.input };
     }
 }
-
-class FunctionDeclaration extends Declaration<FunctionInputUnion> {
-    public readonly argCount: FunctionArgCount;
-
-    public constructor(def: FunctionInputUnion) {
+class FunctionDeclaration extends Declaration {
+    argCount;
+    constructor(def) {
         super(def);
         this.argCount = def.argCount;
     }
-
-    public call(args: number[]): number {
+    call(args) {
         if (FunctionDeclaration.isNoArg(this.input)) {
-            if (args.length === 0) return this.input.call();
-            else throw new TypeError(`関数に渡された引数の数が正しくありません: 正=0, 誤=${args.length}`);
+            if (args.length === 0)
+                return this.input.call();
+            else
+                throw new TypeError(`関数に渡された引数の数が正しくありません: 正=0, 誤=${args.length}`);
         }
         else if (FunctionDeclaration.isOneArg(this.input)) {
-            if (args.length === 1) return this.input.call(args[0]);
-            else throw new TypeError(`関数に渡された引数の数が正しくありません: 正=1, 誤=${args.length}`);
+            if (args.length === 1)
+                return this.input.call(args[0]);
+            else
+                throw new TypeError(`関数に渡された引数の数が正しくありません: 正=1, 誤=${args.length}`);
         }
         else if (FunctionDeclaration.isTwoArg(this.input)) {
-            if (args.length === 2) return this.input.call(args[0], args[1]);
-            else throw new TypeError(`関数に渡された引数の数が正しくありません: 正=2, 誤=${args.length}`);
+            if (args.length === 2)
+                return this.input.call(args[0], args[1]);
+            else
+                throw new TypeError(`関数に渡された引数の数が正しくありません: 正=2, 誤=${args.length}`);
         }
         else if (FunctionDeclaration.isVarArg(this.input)) {
             return this.input.call(args);
@@ -228,95 +112,80 @@ class FunctionDeclaration extends Declaration<FunctionInputUnion> {
             throw new Error("NEVER HAPPENS");
         }
     }
-
-    private static isNoArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.NO> {
+    static isNoArg(def) {
         return def.argCount === FunctionArgCount.NO;
     }
-
-    private static isOneArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.ONE> {
+    static isOneArg(def) {
         return def.argCount === FunctionArgCount.ONE;
     }
-
-    private static isTwoArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.TWO> {
+    static isTwoArg(def) {
         return def.argCount === FunctionArgCount.TWO;
     }
-
-    private static isVarArg(def: FunctionInputUnion): def is FunctionDeclarationInput<FunctionArgCount.VAR> {
+    static isVarArg(def) {
         return def.argCount === FunctionArgCount.VAR;
     }
 }
-
-class OperatorDeclaration extends Declaration<OperatorInputUnion> {
-    public readonly priority: OperatorPriority;
-
-    public constructor(def: OperatorInputUnion) {
+class OperatorDeclaration extends Declaration {
+    priority;
+    constructor(def) {
         super(def);
         this.priority = def.priority;
     }
-
-    public call(x: number, y: number): number {
+    call(x, y) {
         return this.input.operate(x, y);
     }
 }
-
-class ConstantDeclaration extends Declaration<ConstantDeclarationInput> {
-    public readonly value: number;
-
-    public constructor(def: ConstantDeclarationInput) {
+class ConstantDeclaration extends Declaration {
+    value;
+    constructor(def) {
         super(def);
         this.value = def.value;
     }
 }
-
-export class RegistryKey<T, U extends Declaration<unknown>> {
-    private static readonly keys: Set<RegistryKey<unknown, Declaration<unknown>>> = new Set();
-
-    private constructor(public readonly id: string) {
+export class RegistryKey {
+    id;
+    static keys = new Set();
+    constructor(id) {
+        this.id = id;
         RegistryKey.keys.add(this);
     }
-
-    public static values(): ReadonlySet<RegistryKey<unknown, Declaration<unknown>>> {
+    static values() {
         return new Set(this.keys);
     }
-
     /**
      * 定数のレジストリキー
      */
-    public static readonly CONSTANT = new this<ConstantDeclarationInput, ConstantDeclaration>("CONSTANT");
-
+    static CONSTANT = new this("CONSTANT");
     /**
      * 関数のレジストリキー
      */
-    public static readonly FUNCTION = new this<FunctionInputUnion, FunctionDeclaration>("FUNCTION");
-
+    static FUNCTION = new this("FUNCTION");
     /**
      * 演算子のレジストリキー
      */
-    public static readonly OPERATOR = new this<OperatorInputUnion, OperatorDeclaration>("OPERATOR");
+    static OPERATOR = new this("OPERATOR");
 }
-
-type DeclarationDescriptorMap<T> = Record<string, T>;
-
-class ImmutableRegistry<T, U extends Declaration<unknown>> {
-    private readonly registry: Map<string, U> = new Map();
-
+class ImmutableRegistry {
+    registryKey;
+    converter;
+    registry = new Map();
     /**
      * レジストリの参照に使用するオブジェクト
      */
-    public readonly lookup: RegistryLookup<U> = new RegistryLookup(this.registry);
-
-    public constructor(private readonly registryKey: RegistryKey<T, U>, private readonly converter: (input: T) => U) {}
-
+    lookup = new RegistryLookup(this.registry);
+    constructor(registryKey, converter) {
+        this.registryKey = registryKey;
+        this.converter = converter;
+    }
     /**
      * レジストリに宣言を登録する関数
      * @param name 宣言名
      * @param value 登録する値
      */
-    protected register(name: string, value: T): void {
+    register(name, value) {
         if (CHARACTER_DEFINITION.UNDECLARABLE_CHARS.some(char => name.includes(char))) {
             throw new RegistryError(`定義名に無効な文字が含まれています: ${CHARACTER_DEFINITION.UNDECLARABLE_CHARS}`);
         }
-
         if (!this.registry.has(name)) {
             this.registry.set(name, this.converter(value));
         }
@@ -324,23 +193,21 @@ class ImmutableRegistry<T, U extends Declaration<unknown>> {
             throw new RegistryError(`既に定義名 "${name}" は存在します`);
         }
     }
-
     /**
      * レジストリに複数の宣言を登録する関数
      * @param values 複数の宣言
      */
-    protected registerByDescriptor(values: DeclarationDescriptorMap<T>) {
+    registerByDescriptor(values) {
         for (const name of Object.keys(values)) {
             const t = values[name];
             this.register(name, t);
         }
     }
-
     /**
      * レジストリに登録された宣言を削除する関数
      * @param name 宣言名
      */
-    protected unregister(name: string): void {
+    unregister(name) {
         if (this.registry.has(name)) {
             this.registry.delete(name);
         }
@@ -348,72 +215,56 @@ class ImmutableRegistry<T, U extends Declaration<unknown>> {
             throw new RegistryError(`定義名 "${name}" が見つかりませんでした`);
         }
     }
-
-    public writeTo(other: Registry<T, U>, overwrite: boolean): void {
+    writeTo(other, overwrite) {
         for (const { name, value } of this.lookup.getInNameLongestOrder()) {
             if (other.lookup.has(name)) {
-                if (overwrite) other.unregister(name);
-                else continue;
+                if (overwrite)
+                    other.unregister(name);
+                else
+                    continue;
             }
-
-            other.register(name, Declaration.getInternalInput(value) as T);
+            other.register(name, Declaration.getInternalInput(value));
         }
     }
 }
-
-class Registry<T, U extends Declaration<unknown>> extends ImmutableRegistry<T, U> {
-    public override register(name: string, value: T): void {
+class Registry extends ImmutableRegistry {
+    register(name, value) {
         super.register(name, value);
     }
-
-    public override registerByDescriptor(values: DeclarationDescriptorMap<T>): void {
+    registerByDescriptor(values) {
         super.registerByDescriptor(values);
     }
-
-    public override unregister(name: string): void {
+    unregister(name) {
         super.unregister(name);
     }
 }
-
-interface RegistryLookupResult<T extends Declaration<unknown>> {
-    /**
-     * 宣言名
-     */
-    readonly name: string;
-
-    /**
-     * 定義情報
-     */
-    readonly value: T;
-}
-
-class RegistryLookup<T extends Declaration<unknown>> {
-    public constructor(private readonly registry: Map<string, T>) {}
-
+class RegistryLookup {
+    registry;
+    constructor(registry) {
+        this.registry = registry;
+    }
     /**
      * 指定の宣言名が存在するかを返す関数
      * @param name 宣言名
      * @returns 存在すれば `true`
      */
-    public has(name: string): boolean {
+    has(name) {
         return this.registry.has(name);
     }
-
     /**
      * 宣言名から定義情報を返す関数
      * @param name 宣言名
      * @returns 定義情報
      * @throws 宣言名が見つからなかった場合
      */
-    public findByOnlyName(name: string): T {
+    findByOnlyName(name) {
         if (this.registry.has(name)) {
-            return this.registry.get(name)!;
+            return this.registry.get(name);
         }
         else {
             throw new RegistryError(`定義名 "${name}" が見つかりませんでした`);
         }
     }
-
     /**
      * 宣言名と条件から定義情報を返す関数
      * @param name 宣言名
@@ -421,9 +272,8 @@ class RegistryLookup<T extends Declaration<unknown>> {
      * @returns 定義情報
      * @throws 宣言名が見つからなかった場合, 或いは条件を満たさなかった場合
      */
-    public find(name: string, condition: (value: T) => boolean): T {
+    find(name, condition) {
         const value = this.findByOnlyName(name);
-
         if (condition(value)) {
             return value;
         }
@@ -431,19 +281,16 @@ class RegistryLookup<T extends Declaration<unknown>> {
             throw new RegistryError(`定義名 "${name}" は存在しますが、渡された条件に一致しません`);
         }
     }
-
     /**
      * 条件に一致するオブジェクト(宣言名と定義情報の双方を含む)を宣言名文字列の長い順で返す関数
      * @param filter 条件
      * @returns 宣言名と定義情報の双方を含むオブジェクトのソート済み配列
      */
-    public getInNameLongestOrder(filter?: (value: T) => boolean): RegistryLookupResult<T>[] {
-        const list: ({ readonly name: string; readonly value: T })[] = [];
-
+    getInNameLongestOrder(filter) {
+        const list = [];
         for (const name of [...this.registry.keys()].sort((a, b) => b.length - a.length)) {
             const value = this.findByOnlyName(name);
-            let result: RegistryLookupResult<T>;
-
+            let result;
             if (filter === undefined) {
                 result = { name, value };
             }
@@ -453,107 +300,86 @@ class RegistryLookup<T extends Declaration<unknown>> {
             else {
                 continue;
             }
-
             list.push(result);
         }
-
         return list;
     }
 }
-
 class ImmutableRegistries {
-    private readonly registries: Map<RegistryKey<unknown, Declaration<unknown>>, Registry<unknown, Declaration<unknown>>> = new Map();
-
-    protected constructor();
-
-    protected constructor(registries: ImmutableRegistries);
-
-    protected constructor(registries?: ImmutableRegistries) {
+    registries = new Map();
+    constructor(registries) {
         const constantReg = this.create(RegistryKey.CONSTANT, cons => new ConstantDeclaration(cons));
         const funcReg = this.create(RegistryKey.FUNCTION, func => new FunctionDeclaration(func));
         const operatorReg = this.create(RegistryKey.OPERATOR, oper => new OperatorDeclaration(oper));
-
         if (registries) {
             registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder().forEach(val => {
                 constantReg.register(val.name, Declaration.getInternalInput(val.value));
             });
-
             registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder().forEach(val => {
                 funcReg.register(val.name, Declaration.getInternalInput(val.value));
             });
-
             registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder().forEach(val => {
                 operatorReg.register(val.name, Declaration.getInternalInput(val.value));
             });
         }
     }
-
-    private create<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>, converter: (input: T) => U): Registry<T, U> {
+    create(key, converter) {
         if (!this.registries.has(key)) {
             const registry = new Registry(key, converter);
-            this.registries.set(key, registry as Registry<unknown, Declaration<unknown>>);
+            this.registries.set(key, registry);
             return registry;
         }
         else {
             throw new RegistryError(`既にレジストリ "${key.id}" は存在します`);
         }
     }
-
     /**
      * 指定のキーに対応するレジストリを返す関数
      * @param key レジストリキー
      * @returns 対応するレジストリ
      * @throws レジストリキーに対応するレジストリが見つからなかった場合
      */
-    public get<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>): ImmutableRegistry<T, U> {
+    get(key) {
         if (this.registries.has(key)) {
-            return this.registries.get(key) as unknown as ImmutableRegistry<T, U>;
+            return this.registries.get(key);
         }
         else {
             throw new RegistryError(`レジストリ "${key.id}" が見つかりませんでした`);
         }
     }
-
     /**
      * 他のミュータブルインスタンスに自身と同じ情報を書き込む関数
      * @param other 他のインスタンス
      * @param overwrite `true` の場合, 渡されたインスタンスの状態を無視して定義を上書きする
      */
-    public writeTo(other: Registries, overwrite: boolean): void {
+    writeTo(other, overwrite) {
         for (const [registryKey, registry] of this.registries) {
             registry.writeTo(other.get(registryKey), overwrite);
         }
     }
 }
-
 export class Registries extends ImmutableRegistries {
-    public constructor();
-
-    public constructor(registries: ImmutableRegistries);
-
-    public constructor(registires?: ImmutableRegistries) {
-        if (registires) super(registires);
-        else super();
+    constructor(registires) {
+        if (registires)
+            super(registires);
+        else
+            super();
     }
-
-    public override get<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>): Registry<T, U> {
-        return super.get(key) as Registry<T, U>;
+    get(key) {
+        return super.get(key);
     }
-
     /**
      * 読み取り専用のコピーを作成する関数
      * @returns 作成されたインスタンス
      */
-    public toImmutable(): ImmutableRegistries {
+    toImmutable() {
         return new ImmutableRegistries(this);
     }
-
     /**
      * 基本的な演算子や定数・関数の定義が既に行われた読み取り専用レジストリ
      */
-    public static readonly DEFAULT: ImmutableRegistries = (() => {
+    static DEFAULT = (() => {
         const registries = new Registries();
-
         registries.get(RegistryKey.OPERATOR).registerByDescriptor({
             "+": {
                 priority: OperatorPriority.POLYNOMIAL,
@@ -594,47 +420,52 @@ export class Registries extends ImmutableRegistries {
             "&": {
                 priority: OperatorPriority.FACTOR,
                 operate(x, y) {
-                    if (!(Number.isInteger(x) && Number.isInteger(y))) throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
+                    if (!(Number.isInteger(x) && Number.isInteger(y)))
+                        throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
                     return x & y;
                 }
             },
             "|": {
                 priority: OperatorPriority.FACTOR,
                 operate(x, y) {
-                    if (!(Number.isInteger(x) && Number.isInteger(y))) throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
+                    if (!(Number.isInteger(x) && Number.isInteger(y)))
+                        throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
                     return x | y;
                 }
             },
             "^": {
                 priority: OperatorPriority.FACTOR,
                 operate(x, y) {
-                    if (!(Number.isInteger(x) && Number.isInteger(y))) throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
+                    if (!(Number.isInteger(x) && Number.isInteger(y)))
+                        throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
                     return x ^ y;
                 }
             },
             "<<": {
                 priority: OperatorPriority.FACTOR,
                 operate(x, y) {
-                    if (!(Number.isInteger(x) && Number.isInteger(y))) throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
+                    if (!(Number.isInteger(x) && Number.isInteger(y)))
+                        throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
                     return x << y;
                 }
             },
             ">>": {
                 priority: OperatorPriority.FACTOR,
                 operate(x, y) {
-                    if (!(Number.isInteger(x) && Number.isInteger(y))) throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
+                    if (!(Number.isInteger(x) && Number.isInteger(y)))
+                        throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
                     return x >> y;
                 }
             },
             ">>>": {
                 priority: OperatorPriority.FACTOR,
                 operate(x, y) {
-                    if (!(Number.isInteger(x) && Number.isInteger(y))) throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
+                    if (!(Number.isInteger(x) && Number.isInteger(y)))
+                        throw new TypeError("&演算子は実質的な整数の値にのみ使用できます");
                     return x >>> y;
                 }
             }
         });
-
         registries.get(RegistryKey.CONSTANT).registerByDescriptor({
             "NaN": {
                 value: NaN
@@ -652,7 +483,6 @@ export class Registries extends ImmutableRegistries {
                 value: Infinity
             }
         });
-
         registries.get(RegistryKey.FUNCTION).registerByDescriptor({
             "random": {
                 argCount: FunctionArgCount.NO,
@@ -729,15 +559,16 @@ export class Registries extends ImmutableRegistries {
             "factorial": {
                 argCount: FunctionArgCount.ONE,
                 call(x) {
-                    if (!Number.isInteger(x)) throw new TypeError("階乗は実質的な整数の値にのみ使用できます");
-                    else if (x < 0) throw new TypeError("階乗は負の値に使用できません");
-                    else if (x > 127) throw new TypeError("階乗は負荷軽減のため、127!を超えた値を計算できないよう制限されています");
-        
+                    if (!Number.isInteger(x))
+                        throw new TypeError("階乗は実質的な整数の値にのみ使用できます");
+                    else if (x < 0)
+                        throw new TypeError("階乗は負の値に使用できません");
+                    else if (x > 127)
+                        throw new TypeError("階乗は負荷軽減のため、127!を超えた値を計算できないよう制限されています");
                     let result = 1;
                     for (let i = 2; i <= x; i++) {
                         result *= i;
                     }
-        
                     return result;
                 }
             },
@@ -762,104 +593,68 @@ export class Registries extends ImmutableRegistries {
                 call: Math.pow
             }
         });
-
         return new ImmutableRegistries(registries);
     })();
 }
-
-export interface EvaluatorCreateOptions {
-    /**
-     * {@link ImmutableCalcExpEvaluator} の設定
-     */
-    configuration?: OptionalEvaluatorConfiguration;
-
-    /**
-     * 宣言のコピー元レジストリ    
-     * 指定がない場合は空のレジストリが使用される
-     */
-    copySourceRegistries?: ImmutableRegistries;
-};
-
+;
 /**
  * 定義を外部から追加・変更・削除することができない{@link CalcExpEvaluator}のクラス
  */
 export class ImmutableCalcExpEvaluator {
-    private static readonly DEFAULT_CONFIGURATION: ImmutableEvaluatorConfiguration = {
+    static DEFAULT_CONFIGURATION = {
         allowNaN: false,
         neverThrows: false
     };
-
-    protected static mergeWithDefaultConfiguration(input?: OptionalEvaluatorConfiguration): EvaluatorConfiguration {
+    static mergeWithDefaultConfiguration(input) {
         return { ...this.DEFAULT_CONFIGURATION, ...input };
     }
-
     /**
      * 宣言のレジストリを纏めたオブジェクト
      */
-    public readonly registries: ImmutableRegistries;
-
+    registries;
     /**
      * このインスタンスの設定
      */
-    public readonly configuration: ImmutableEvaluatorConfiguration;
-
-    private expression: string = "";
-
-    private location: number = 0;
-
-    public constructor(options?: EvaluatorCreateOptions) {
+    configuration;
+    expression = "";
+    location = 0;
+    constructor(options) {
         this.configuration = ImmutableCalcExpEvaluator.mergeWithDefaultConfiguration(options?.configuration);
         this.registries = options?.copySourceRegistries === undefined ? new Registries().toImmutable() : new Registries(options.copySourceRegistries).toImmutable();
     }
-
-    private isOver(): boolean {
-        return this.location >= this.expression.length
+    isOver() {
+        return this.location >= this.expression.length;
     }
-
-    private next(): string;
-
-    private next(next: string): string;
-
-    private next(next: boolean): string;
-
-    private next(next: string | boolean = true): string | boolean {
+    next(next = true) {
         if (typeof next === "boolean") {
             if (this.isOver()) {
                 throw new EvaluationError("文字数を超えた位置へのアクセスが発生しました");
             }
-
-            const current: string = this.expression.charAt(this.location++);
-    
-            if (CHARACTER_DEFINITION.IGNORED.includes(current) && next) return this.next();
-    
+            const current = this.expression.charAt(this.location++);
+            if (CHARACTER_DEFINITION.IGNORED.includes(current) && next)
+                return this.next();
             return current;
         }
         else {
-            if (this.isOver()) return false;
-
+            if (this.isOver())
+                return false;
             this.ignore();
-
-            const str: string = this.expression.substring(this.location);
-
+            const str = this.expression.substring(this.location);
             if (str.startsWith(next)) {
                 this.location += next.length;
                 this.ignore();
                 return true;
             }
-
             return false;
         }
     }
-
-    private back(): void {
+    back() {
         this.location--;
     }
-
-    private ignore(): void {
-        if (this.isOver()) return;
-
-        const current: string = this.expression.charAt(this.location++);
-
+    ignore() {
+        if (this.isOver())
+            return;
+        const current = this.expression.charAt(this.location++);
         if (CHARACTER_DEFINITION.IGNORED.includes(current)) {
             this.ignore();
         }
@@ -867,39 +662,31 @@ export class ImmutableCalcExpEvaluator {
             this.back();
         }
     }
-
-    private test(...nexts: string[]): boolean {
+    test(...nexts) {
         const loc = this.location;
-
         for (const next of nexts) {
             if (!this.next(next)) {
                 this.location = loc;
                 return false;
             }
         }
-
         this.location = loc;
         return true;
     }
-
-    private number(): number {
-        let string: string = "";
-
+    number() {
+        let string = "";
         for (const signChar of CHARACTER_DEFINITION.SIGNS) {
             if (this.next(signChar)) {
                 string += signChar;
                 break;
             }
         }
-
         if (this.isFunction()) {
             try {
                 const returnValue = this.getFunction().call(this.arguments());
-
                 if (typeof returnValue !== "number") {
                     throw new EvaluationError("関数の戻り値の型が無効です: " + typeof returnValue);
                 }
-
                 string += returnValue;
             }
             catch (e) {
@@ -908,29 +695,25 @@ export class ImmutableCalcExpEvaluator {
         }
         else if (this.isConst()) {
             const returnValue = this.getConst().value;
-
             if (typeof returnValue !== "number") {
                 throw new EvaluationError("定数から取り出された値の型が無効です: " + typeof returnValue);
             }
-
             string += returnValue;
         }
         else if (CHARACTER_DEFINITION.SIGNS.some(sign => this.test(sign)) || this.test(CHARACTER_DEFINITION.PARENTHESIS[0])) {
-            const value: number = this.polynomial();
-
+            const value = this.polynomial();
             if (string.length === 0) {
                 string += value.toString();
             }
             else {
-                const signChar: string = string.charAt(0);
+                const signChar = string.charAt(0);
                 string = this.applySign(value, signChar).toString();
             }
         }
         else {
-            let dotAlreadyAppended: boolean = false;
+            let dotAlreadyAppended = false;
             while (!this.isOver()) {
-                const current: string = this.next(false);
-
+                const current = this.next(false);
                 if (CHARACTER_DEFINITION.NUMBER_CHARS.includes(current)) {
                     string += current;
                 }
@@ -938,7 +721,6 @@ export class ImmutableCalcExpEvaluator {
                     if (dotAlreadyAppended) {
                         throw new EvaluationError("無効な小数点を検知しました");
                     }
-
                     string += current;
                     dotAlreadyAppended = true;
                 }
@@ -948,11 +730,9 @@ export class ImmutableCalcExpEvaluator {
                 }
             }
         }
-
         return CHARACTER_DEFINITION.NUMBER_PARSER(string);
     }
-
-    private applySign(value: number, sign: string): number {
+    applySign(value, sign) {
         if (CHARACTER_DEFINITION.SIGNS[0] === sign) {
             return value;
         }
@@ -963,42 +743,33 @@ export class ImmutableCalcExpEvaluator {
             throw new EvaluationError("'" + sign + "'は無効な符号です");
         }
     }
-
-    private monomial(): number {
-        let value: number = this.operateWithAnotherFactor(this.factor());
-
+    monomial() {
+        let value = this.operateWithAnotherFactor(this.factor());
         a: while (!this.isOver()) {
             const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.MONOMIAL);
-
             for (const operator of operators) {
                 if (this.next(operator.name)) {
                     const declaration = operator.value;
-
                     try {
                         value = declaration.call(value, this.operateWithAnotherFactor(this.factor()));
                     }
                     catch (e) {
-                        throw new EvaluationError("単項間演算子が例外を投げました", e)
+                        throw new EvaluationError("単項間演算子が例外を投げました", e);
                     }
                     continue a;
                 }
             }
             break;
         }
-
         return value;
     }
-
-    private polynomial(): number {
-        let value: number = this.monomial();
-
+    polynomial() {
+        let value = this.monomial();
         a: while (!this.isOver()) {
             const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.POLYNOMIAL);
-
             for (const operator of operators) {
                 if (this.next(operator.name)) {
                     const declaration = operator.value;
-
                     try {
                         value = declaration.call(value, this.monomial());
                     }
@@ -1010,22 +781,16 @@ export class ImmutableCalcExpEvaluator {
             }
             break;
         }
-
         return value;
     }
-
-    private operateWithAnotherFactor(num: number): number {
-        let value: number = num;
-
+    operateWithAnotherFactor(num) {
+        let value = num;
         a: while (!this.isOver()) {
             const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.FACTOR);
-
             for (const operator of operators) {
                 if (this.next(operator.name)) {
                     const declaration = operator.value;
-
-                    const obj: number = this.factor();
-
+                    const obj = this.factor();
                     try {
                         value = declaration.call(value, obj);
                     }
@@ -1035,25 +800,18 @@ export class ImmutableCalcExpEvaluator {
                     continue a;
                 }
             }
-
             break;
         }
-
         return value;
     }
-
-    private factor(): number {
-        const current: string = this.next();
-
+    factor() {
+        const current = this.next();
         if (current == CHARACTER_DEFINITION.PARENTHESIS[0]) {
-            let value: number = this.polynomial();
-
+            let value = this.polynomial();
             if (this.isOver()) {
                 throw new EvaluationError("括弧が閉じられていません");
             }
-
-            const next: string = this.next();
-
+            const next = this.next();
             if (next == CHARACTER_DEFINITION.PARENTHESIS[1]) {
                 this.ignore();
                 return value;
@@ -1067,26 +825,20 @@ export class ImmutableCalcExpEvaluator {
             return this.number();
         }
     }
-
-    private arguments(): number[] {
-        const args: number[] = [];
-
+    arguments() {
+        const args = [];
         if (!this.next(CHARACTER_DEFINITION.PARENTHESIS[0])) {
             throw new EvaluationError("関数の呼び出しには括弧が必要です");
         }
-
         if (this.next(CHARACTER_DEFINITION.PARENTHESIS[1])) {
             return args;
         }
-
         while (true) {
             if (this.isOver()) {
                 throw new EvaluationError("引数の探索中に文字列外に来ました");
             }
-
-            let value: number = this.polynomial();
-            const next: string = this.next();
-
+            let value = this.polynomial();
+            const next = this.next();
             if (next == CHARACTER_DEFINITION.COMMA) {
                 args.push(value);
             }
@@ -1100,84 +852,67 @@ export class ImmutableCalcExpEvaluator {
             }
         }
     }
-
-    private isConst(): boolean {
+    isConst() {
         for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
             if (this.test(constant.name)) {
                 return true;
             }
         }
-
         return false;
     }
-
-    private getConst(): ConstantDeclaration {
+    getConst() {
         for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
             if (this.next(constant.name)) {
                 return constant.value;
             }
         }
-
         throw new EvaluationError("定数を取得できませんでした");
     }
-
-    private isFunction(): boolean {
+    isFunction() {
         for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
             if (this.test(func.name, CHARACTER_DEFINITION.PARENTHESIS[0])) {
                 return true;
             }
         }
-
         return false;
     }
-
-    private getFunction(): FunctionDeclaration {
+    getFunction() {
         for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
             if (this.test(func.name, CHARACTER_DEFINITION.PARENTHESIS[0])) {
                 this.next(func.name);
                 return func.value;
             }
         }
-
         throw new EvaluationError("関数を取得できませんでした");
     }
-
-    private index(): number {
+    index() {
         if (this.location != 0) {
             throw new EvaluationError("カーソル位置が0ではありませんでした インスタンス自身がevaluate()を呼び出した可能性があります");
         }
-
         if (this.isOver()) {
             throw new EvaluationError("空文字は計算できません");
         }
-
-        const value: number = this.polynomial();
-
+        const value = this.polynomial();
         if (this.expression.substring(this.location).length !== 0) {
             throw new EvaluationError("式の終了後に無効な文字を検出しました");
         }
-
         return value;
     }
-
     /**
      * 引数に渡された文字列を式として評価する関数
      * @param expression 式
      * @returns 計算結果
      * @throws 文字列の解析に失敗するか、{@link ImmutableEvaluatorConfiguration#allowNaN}が `false` の状態で `NaN` が出力された場合
      */
-    public evaluate(expression: string): number {
+    evaluate(expression) {
         this.expression = expression;
-
-        const nanError = new EvaluationError("式からNaNが出力されました");;
-
+        const nanError = new EvaluationError("式からNaNが出力されました");
+        ;
         try {
-            const value: number = this.index();
-
+            const value = this.index();
             if (Number.isNaN(value) && !this.configuration.allowNaN) {
                 throw nanError;
             }
-
             return value;
         }
         catch (e) {
@@ -1196,31 +931,26 @@ export class ImmutableCalcExpEvaluator {
             this.expression = "";
         }
     }
-
     /**
      * 定義を全てコピーした新しいインスタンスを作成する関数
      * @returns このインスタンスの新しいクローン
      */
-    public clone(): ImmutableCalcExpEvaluator {
+    clone() {
         return new ImmutableCalcExpEvaluator({
             configuration: this.configuration,
             copySourceRegistries: this.registries
         });
     }
 }
-
 export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
-    public override readonly configuration: EvaluatorConfiguration;
-
-    public override readonly registries: Registries;
-
-    public constructor(options?: EvaluatorCreateOptions) {
+    configuration;
+    registries;
+    constructor(options) {
         super(options);
         this.configuration = ImmutableCalcExpEvaluator.mergeWithDefaultConfiguration(options?.configuration);
         this.registries = options?.copySourceRegistries === undefined ? new Registries() : new Registries(options.copySourceRegistries);
     }
-
-    public override clone(): CalcExpEvaluator {
+    clone() {
         return new CalcExpEvaluator({
             configuration: this.configuration,
             copySourceRegistries: this.registries

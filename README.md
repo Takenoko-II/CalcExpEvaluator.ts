@@ -10,41 +10,45 @@
 ## Usage
 
 ### 導入
-[このファイル](/src/CalcExpEvaluator.ts)を適当な場所に置けばok
-<br>~~js?知りません~~
+[このファイル](/dest/CalcExpEvaluator.js)と[このファイル](/dest/CalcExpEvaluator.d.ts)を適当な場所に置けばok
 
 ### 計算
-`CalcExpEvaluator.newDefaultEvaluator()`は新しくデフォルトの計算機のインスタンスを作成する関数
+`Registries.DEFAULT`は既にいろいろ定義されたレジストリ
 <br>`new CalcExpEvaluator()`で何も定義されていないインスタンスを作成することも可能
 
 ```ts
-import { CalcExpEvaluator } from "./CalcExpEvaluator"; // 一つのファイルに全部まとめてある
+import { CalcExpEvaluator, Registries } from "./CalcExpEvaluator"; // 一つのファイルに全部まとめてある
 
-console.log(CalcExpEvaluator.newDefaultEvaluator().evaluate("1 + 1")); // 2
+const evaluator = new CalcExpEvaluator({ copySourceRegistries: Registries.DEFAULT });
+
+console.log(evaluator.evaluate("1 + 1")); // 2
 ```
 
 ### 定義
 `CalcExpEvaluator#registries`は演算子・関数・定数のレジストリ
 
 ```ts
-import { CalcExpEvaluator, RegistryKey, FunctionArgCount, OperatorPriority } from "./CalcExpEvaluator";
+import { CalcExpEvaluator, RegistryKey, FunctionArgCount, OperatorPriority, Registries } from "./CalcExpEvaluator";
 
-const evaluator = CalcExpEvaluator.newDefaultEvaluator();
-const registires = evaluator.registries;
+const evaluator = new CalcExpEvaluator({ copySourceRegistries: Registries.DEFAULT });
 
-registires.get(RegistryKey.OPERATOR).register("ぷらす", {
+evaluator.registries.get(RegistryKey.OPERATOR).register("ぷらす", {
     priority: OperatorPriority.POLYNOMIAL,
     operate(x, y) {
         return x + y;
     }
 });
-registries.get(RegistryKey.FUNCTION).register("sum", {
+
+evaluator.registries.get(RegistryKey.FUNCTION).register("sum", {
     argCount: FunctionArgCount.VAR,
     call(args) {
         return args.reduce((a, b) => a + b, 0);
     }
 });
-registries.get(RegistryKey.CONSTANT).register("g", -9.8);
+
+evaluator.registries.get(RegistryKey.CONSTANT).register("g", {
+    value: -9.8
+});
 
 console.log(evaluator.evaluate("3 * (20 ぷらす 40)")); // 180
 console.log(evaluator.evaluate("sum(1, 2, 3, 4)")); // 10
@@ -56,13 +60,14 @@ console.log(evaluator.evaluate("2 * g")); // -19.6
 <br>`Registry#lookup`は演算子・関数・定数の定義を取得するためのオブジェクト
 
 ```ts
-import { CalcExpEvaluator, RegistryKey } from "./CalcExpEvaluator";
+import { CalcExpEvaluator, Registries, RegistryKey } from "./CalcExpEvaluator";
 
-const evaluator = CalcExpEvaluator.newDefaultEvaluator();
+const evaluator = new CalcExpEvaluator({ copySourceRegistries: Registries.DEFAULT });
+const operators = evaluator.registries.get(RegistryKey.OPERATOR);
 
-console.log(evaluator.registries.get(RegistryKey.OPERATOR)lookup..getInNameLongestOrder()); // [+, -, *, /, %, ...]
-evaluator.registries.get(RegistryKey.OPERATOR).unregister("/");
-console.log(evaluator.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder()); // [+, -, *, %, ...]
+console.log(operators.lookup.getInNameLongestOrder()); // [+, -, *, /, %, ...]
+operators.unregister("/");
+console.log(operators.lookup.getInNameLongestOrder()); // [+, -, *, %, ...]
 
 console.log(evaluator.registries.get(RegistryKey.CONSTANT).lookup.has("NaN")); // true
 ```
