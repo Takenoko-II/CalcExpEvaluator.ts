@@ -4,7 +4,7 @@
 const CHARACTER_DEFINITION = {
     IGNORED: [' ', '\n'],
     SIGNS: ['+', '-'],
-    NUMBER_CHARS: "0123456789".split(""),
+    NUMBER_CHARS: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
     NUMBER_PARSER: (input) => {
         if (/^(?:[+-]?\d+(?:\.\d+)?(?:(?:[eE][+-]?\d+)|(?:\*10\^[+-]?\d+))?)|[+-]?Infinity|NaN$/g.test(input)) {
             return Number.parseFloat(input);
@@ -149,21 +149,32 @@ export class RegistryKey {
         this.id = id;
         RegistryKey.keys.add(this);
     }
+    /**
+     * レジストリキーの文字列表現を返す関数
+     * @returns
+     */
+    toString() {
+        return "RegistryKey<" + this.id + ">";
+    }
+    /**
+     * すべてのレジストリキーを返す関数
+     * @returns `Set`
+     */
     static values() {
         return new Set(this.keys);
     }
     /**
      * 定数のレジストリキー
      */
-    static CONSTANT = new this("CONSTANT");
+    static CONSTANT = new this("constant");
     /**
      * 関数のレジストリキー
      */
-    static FUNCTION = new this("FUNCTION");
+    static FUNCTION = new this("function");
     /**
      * 演算子のレジストリキー
      */
-    static OPERATOR = new this("OPERATOR");
+    static OPERATOR = new this("operator");
 }
 class ImmutableRegistry {
     registryKey;
@@ -195,12 +206,12 @@ class ImmutableRegistry {
     }
     /**
      * レジストリに複数の宣言を登録する関数
+     * @param name 変数の接頭辞
      * @param values 複数の宣言
      */
     registerByDescriptor(values) {
         for (const name of Object.keys(values)) {
-            const t = values[name];
-            this.register(name, t);
+            this.register(name, values[name]);
         }
     }
     /**
@@ -330,7 +341,7 @@ class ImmutableRegistries {
             return registry;
         }
         else {
-            throw new RegistryError(`既にレジストリ "${key.id}" は存在します`);
+            throw new RegistryError(`既にレジストリ "${key.toString()}" は存在します`);
         }
     }
     /**
@@ -344,7 +355,7 @@ class ImmutableRegistries {
             return this.registries.get(key);
         }
         else {
-            throw new RegistryError(`レジストリ "${key.id}" が見つかりませんでした`);
+            throw new RegistryError(`レジストリ "${key.toString()}" が見つかりませんでした`);
         }
     }
     /**
@@ -593,7 +604,7 @@ export class Registries extends ImmutableRegistries {
                 call: Math.pow
             }
         });
-        return new ImmutableRegistries(registries);
+        return registries.toImmutable();
     })();
 }
 ;

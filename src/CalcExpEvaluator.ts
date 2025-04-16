@@ -22,7 +22,7 @@ interface CharacterDefinition {
 const CHARACTER_DEFINITION: CharacterDefinition = {
     IGNORED: [' ', '\n'],
     SIGNS: ['+', '-'],
-    NUMBER_CHARS: "0123456789".split(""),
+    NUMBER_CHARS: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'],
     NUMBER_PARSER: (input: string) => {
         if (/^(?:[+-]?\d+(?:\.\d+)?(?:(?:[eE][+-]?\d+)|(?:\*10\^[+-]?\d+))?)|[+-]?Infinity|NaN$/g.test(input)) {
             return Number.parseFloat(input);
@@ -79,24 +79,8 @@ export interface OptionalEvaluatorConfiguration {
 }
 
 interface ImmutableEvaluatorConfiguration extends OptionalEvaluatorConfiguration {
-    /**
-     * `true` の場合, 計算結果が `NaN` になることを許容する    
-     * デフォルトでは `false`
-     */
     readonly allowNaN: boolean;
 
-    /**
-     * `true` の場合, 式中の大文字・小文字を区別する    
-     * `false` の場合, 式中の大文字・小文字は区別されない    
-     * たとえば `foo` 関数と `Foo` 関数が定義されていた場合, どちらが使用されるかはレジストリの気分次第    
-     * デフォルトでは `true`
-     */
-    // readonly caseSensitive: boolean;
-
-    /**
-     * `true` の場合, 計算中に例外が発生したとき `NaN` が返る    
-     * デフォルトでは `false`
-     */
     readonly neverThrows: boolean;
 }
 
@@ -271,10 +255,22 @@ class ConstantDeclaration extends Declaration<ConstantDeclarationInput> {
 export class RegistryKey<T, U extends Declaration<unknown>> {
     private static readonly keys: Set<RegistryKey<unknown, Declaration<unknown>>> = new Set();
 
-    private constructor(public readonly id: string) {
+    private constructor(private readonly id: string) {
         RegistryKey.keys.add(this);
     }
 
+    /**
+     * レジストリキーの文字列表現を返す関数
+     * @returns 
+     */
+    public toString(): string {
+        return "RegistryKey<" + this.id + ">";
+    }
+
+    /**
+     * すべてのレジストリキーを返す関数
+     * @returns `Set`
+     */
     public static values(): ReadonlySet<RegistryKey<unknown, Declaration<unknown>>> {
         return new Set(this.keys);
     }
@@ -282,17 +278,17 @@ export class RegistryKey<T, U extends Declaration<unknown>> {
     /**
      * 定数のレジストリキー
      */
-    public static readonly CONSTANT = new this<ConstantDeclarationInput, ConstantDeclaration>("CONSTANT");
+    public static readonly CONSTANT = new this<ConstantDeclarationInput, ConstantDeclaration>("constant");
 
     /**
      * 関数のレジストリキー
      */
-    public static readonly FUNCTION = new this<FunctionInputUnion, FunctionDeclaration>("FUNCTION");
+    public static readonly FUNCTION = new this<FunctionInputUnion, FunctionDeclaration>("function");
 
     /**
      * 演算子のレジストリキー
      */
-    public static readonly OPERATOR = new this<OperatorInputUnion, OperatorDeclaration>("OPERATOR");
+    public static readonly OPERATOR = new this<OperatorInputUnion, OperatorDeclaration>("operator");
 }
 
 type DeclarationDescriptorMap<T> = Record<string, T>;
@@ -327,12 +323,12 @@ class ImmutableRegistry<T, U extends Declaration<unknown>> {
 
     /**
      * レジストリに複数の宣言を登録する関数
+     * @param name 変数の接頭辞
      * @param values 複数の宣言
      */
     protected registerByDescriptor(values: DeclarationDescriptorMap<T>) {
         for (const name of Object.keys(values)) {
-            const t = values[name];
-            this.register(name, t);
+            this.register(name, values[name]);
         }
     }
 
@@ -495,7 +491,7 @@ class ImmutableRegistries {
             return registry;
         }
         else {
-            throw new RegistryError(`既にレジストリ "${key.id}" は存在します`);
+            throw new RegistryError(`既にレジストリ "${key.toString()}" は存在します`);
         }
     }
 
@@ -510,7 +506,7 @@ class ImmutableRegistries {
             return this.registries.get(key) as unknown as ImmutableRegistry<T, U>;
         }
         else {
-            throw new RegistryError(`レジストリ "${key.id}" が見つかりませんでした`);
+            throw new RegistryError(`レジストリ "${key.toString()}" が見つかりませんでした`);
         }
     }
 
@@ -763,7 +759,7 @@ export class Registries extends ImmutableRegistries {
             }
         });
 
-        return new ImmutableRegistries(registries);
+        return registries.toImmutable();
     })();
 }
 

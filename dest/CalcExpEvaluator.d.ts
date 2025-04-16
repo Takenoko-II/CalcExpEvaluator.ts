@@ -30,21 +30,7 @@ export interface OptionalEvaluatorConfiguration {
     neverThrows?: boolean;
 }
 interface ImmutableEvaluatorConfiguration extends OptionalEvaluatorConfiguration {
-    /**
-     * `true` の場合, 計算結果が `NaN` になることを許容する
-     * デフォルトでは `false`
-     */
     readonly allowNaN: boolean;
-    /**
-     * `true` の場合, 式中の大文字・小文字を区別する
-     * `false` の場合, 式中の大文字・小文字は区別されない
-     * たとえば `foo` 関数と `Foo` 関数が定義されていた場合, どちらが使用されるかはレジストリの気分次第
-     * デフォルトでは `true`
-     */
-    /**
-     * `true` の場合, 計算中に例外が発生したとき `NaN` が返る
-     * デフォルトでは `false`
-     */
     readonly neverThrows: boolean;
 }
 interface EvaluatorConfiguration extends ImmutableEvaluatorConfiguration {
@@ -146,9 +132,18 @@ declare class ConstantDeclaration extends Declaration<ConstantDeclarationInput> 
     constructor(def: ConstantDeclarationInput);
 }
 export declare class RegistryKey<T, U extends Declaration<unknown>> {
-    readonly id: string;
+    private readonly id;
     private static readonly keys;
     private constructor();
+    /**
+     * レジストリキーの文字列表現を返す関数
+     * @returns
+     */
+    toString(): string;
+    /**
+     * すべてのレジストリキーを返す関数
+     * @returns `Set`
+     */
     static values(): ReadonlySet<RegistryKey<unknown, Declaration<unknown>>>;
     /**
      * 定数のレジストリキー
@@ -181,6 +176,7 @@ declare class ImmutableRegistry<T, U extends Declaration<unknown>> {
     protected register(name: string, value: T): void;
     /**
      * レジストリに複数の宣言を登録する関数
+     * @param name 変数の接頭辞
      * @param values 複数の宣言
      */
     protected registerByDescriptor(values: DeclarationDescriptorMap<T>): void;

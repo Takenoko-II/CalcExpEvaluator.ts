@@ -51,3 +51,16 @@ evaluator.registries.get(RegistryKey.CONSTANT).register("57", {
     value: 1
 });
 console.log(evaluator.evaluate("57 + 57")); // 2
+
+evaluator.registries.get(RegistryKey.FUNCTION).registerByDescriptor({
+    rand_int: {
+        argCount: FunctionArgCount.TWO,
+        call(x, y) {
+            const min: number = Math.min(x, y)
+            const max: number = Math.max(x, y);
+
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+    }
+});
+console.log(evaluator.evaluate("rand_int(-8, 8)")); // -8 ～ 8 の乱数
