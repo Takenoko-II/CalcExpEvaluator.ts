@@ -11,6 +11,7 @@
 
 ### 導入
 [このファイル](/dest/CalcExpEvaluator.js)と[このファイル](/dest/CalcExpEvaluator.d.ts)を適当な場所に置けばok
+<br>或いは使えるのであれば[これ](/src/CalcExpEvaluator.ts)でもいい
 
 ### 計算
 `Registries.DEFAULT`は既にいろいろ定義されたレジストリ
