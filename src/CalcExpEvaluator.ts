@@ -47,7 +47,7 @@ export class EvaluationError extends Error {
 }
 
 /**
- * {@link ImmutableRegistry}から投げられるエラーのクラス
+ * {@link ImmutableDeclarationRegistry}から投げられるエラーのクラス
  */
 export class RegistryError extends Error {
     public constructor(message: string, cause?: unknown) {
@@ -252,11 +252,11 @@ class ConstantDeclaration extends Declaration<ConstantDeclarationInput> {
     }
 }
 
-export class RegistryKey<T, U extends Declaration<unknown>> {
-    private static readonly keys: Set<RegistryKey<unknown, Declaration<unknown>>> = new Set();
+export class DeclarationRegistryKey<T, U extends Declaration<unknown>> {
+    private static readonly keys: Set<DeclarationRegistryKey<unknown, Declaration<unknown>>> = new Set();
 
     private constructor(private readonly id: string) {
-        RegistryKey.keys.add(this);
+        DeclarationRegistryKey.keys.add(this);
     }
 
     /**
@@ -271,7 +271,7 @@ export class RegistryKey<T, U extends Declaration<unknown>> {
      * すべてのレジストリキーを返す関数
      * @returns `Set`
      */
-    public static values(): ReadonlySet<RegistryKey<unknown, Declaration<unknown>>> {
+    public static values(): ReadonlySet<DeclarationRegistryKey<unknown, Declaration<unknown>>> {
         return new Set(this.keys);
     }
 
@@ -293,15 +293,15 @@ export class RegistryKey<T, U extends Declaration<unknown>> {
 
 type DeclarationDescriptorMap<T> = Record<string, T>;
 
-class ImmutableRegistry<T, U extends Declaration<unknown>> {
+class ImmutableDeclarationRegistry<T, U extends Declaration<unknown>> {
     private readonly registry: Map<string, U> = new Map();
 
     /**
      * レジストリの参照に使用するオブジェクト
      */
-    public readonly lookup: RegistryLookup<U> = new RegistryLookup(this.registry);
+    public readonly lookup: DeclarationRegistryLookup<U> = new DeclarationRegistryLookup(this.registry);
 
-    public constructor(private readonly registryKey: RegistryKey<T, U>, private readonly converter: (input: T) => U) {}
+    public constructor(private readonly registryKey: DeclarationRegistryKey<T, U>, private readonly converter: (input: T) => U) {}
 
     /**
      * レジストリに宣言を登録する関数
@@ -345,7 +345,7 @@ class ImmutableRegistry<T, U extends Declaration<unknown>> {
         }
     }
 
-    public writeTo(other: Registry<T, U>, overwrite: boolean): void {
+    public writeTo(other: DeclarationRegistry<T, U>, overwrite: boolean): void {
         for (const { name, value } of this.lookup.getInNameLongestOrder()) {
             if (other.lookup.has(name)) {
                 if (overwrite) other.unregister(name);
@@ -357,7 +357,7 @@ class ImmutableRegistry<T, U extends Declaration<unknown>> {
     }
 }
 
-class Registry<T, U extends Declaration<unknown>> extends ImmutableRegistry<T, U> {
+class DeclarationRegistry<T, U extends Declaration<unknown>> extends ImmutableDeclarationRegistry<T, U> {
     public override register(name: string, value: T): void {
         super.register(name, value);
     }
@@ -371,7 +371,7 @@ class Registry<T, U extends Declaration<unknown>> extends ImmutableRegistry<T, U
     }
 }
 
-interface RegistryLookupResult<T extends Declaration<unknown>> {
+interface DeclarationRegistryLookupResult<T extends Declaration<unknown>> {
     /**
      * 宣言名
      */
@@ -383,7 +383,7 @@ interface RegistryLookupResult<T extends Declaration<unknown>> {
     readonly value: T;
 }
 
-class RegistryLookup<T extends Declaration<unknown>> {
+class DeclarationRegistryLookup<T extends Declaration<unknown>> {
     public constructor(private readonly registry: Map<string, T>) {}
 
     /**
@@ -433,12 +433,12 @@ class RegistryLookup<T extends Declaration<unknown>> {
      * @param filter 条件
      * @returns 宣言名と定義情報の双方を含むオブジェクトのソート済み配列
      */
-    public getInNameLongestOrder(filter?: (value: T) => boolean): RegistryLookupResult<T>[] {
+    public getInNameLongestOrder(filter?: (value: T) => boolean): DeclarationRegistryLookupResult<T>[] {
         const list: ({ readonly name: string; readonly value: T })[] = [];
 
         for (const name of [...this.registry.keys()].sort((a, b) => b.length - a.length)) {
             const value = this.findByOnlyName(name);
-            let result: RegistryLookupResult<T>;
+            let result: DeclarationRegistryLookupResult<T>;
 
             if (filter === undefined) {
                 result = { name, value };
@@ -457,37 +457,37 @@ class RegistryLookup<T extends Declaration<unknown>> {
     }
 }
 
-class ImmutableRegistries {
-    private readonly registries: Map<RegistryKey<unknown, Declaration<unknown>>, Registry<unknown, Declaration<unknown>>> = new Map();
+class ImmutableDeclarationRegistries {
+    private readonly registries: Map<DeclarationRegistryKey<unknown, Declaration<unknown>>, DeclarationRegistry<unknown, Declaration<unknown>>> = new Map();
 
     protected constructor();
 
-    protected constructor(registries: ImmutableRegistries);
+    protected constructor(registries: ImmutableDeclarationRegistries);
 
-    protected constructor(registries?: ImmutableRegistries) {
-        const constantReg = this.create(RegistryKey.CONSTANT, cons => new ConstantDeclaration(cons));
-        const funcReg = this.create(RegistryKey.FUNCTION, func => new FunctionDeclaration(func));
-        const operatorReg = this.create(RegistryKey.OPERATOR, oper => new OperatorDeclaration(oper));
+    protected constructor(registries?: ImmutableDeclarationRegistries) {
+        const constantReg = this.create(DeclarationRegistryKey.CONSTANT, cons => new ConstantDeclaration(cons));
+        const funcReg = this.create(DeclarationRegistryKey.FUNCTION, func => new FunctionDeclaration(func));
+        const operatorReg = this.create(DeclarationRegistryKey.OPERATOR, oper => new OperatorDeclaration(oper));
 
         if (registries) {
-            registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder().forEach(val => {
+            registries.get(DeclarationRegistryKey.CONSTANT).lookup.getInNameLongestOrder().forEach(val => {
                 constantReg.register(val.name, Declaration.getInternalInput(val.value));
             });
 
-            registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder().forEach(val => {
+            registries.get(DeclarationRegistryKey.FUNCTION).lookup.getInNameLongestOrder().forEach(val => {
                 funcReg.register(val.name, Declaration.getInternalInput(val.value));
             });
 
-            registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder().forEach(val => {
+            registries.get(DeclarationRegistryKey.OPERATOR).lookup.getInNameLongestOrder().forEach(val => {
                 operatorReg.register(val.name, Declaration.getInternalInput(val.value));
             });
         }
     }
 
-    private create<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>, converter: (input: T) => U): Registry<T, U> {
+    private create<T, U extends Declaration<unknown>>(key: DeclarationRegistryKey<T, U>, converter: (input: T) => U): DeclarationRegistry<T, U> {
         if (!this.registries.has(key)) {
-            const registry = new Registry(key, converter);
-            this.registries.set(key, registry as Registry<unknown, Declaration<unknown>>);
+            const registry = new DeclarationRegistry(key, converter);
+            this.registries.set(key, registry as DeclarationRegistry<unknown, Declaration<unknown>>);
             return registry;
         }
         else {
@@ -501,9 +501,9 @@ class ImmutableRegistries {
      * @returns 対応するレジストリ
      * @throws レジストリキーに対応するレジストリが見つからなかった場合
      */
-    public get<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>): ImmutableRegistry<T, U> {
+    public get<T, U extends Declaration<unknown>>(key: DeclarationRegistryKey<T, U>): ImmutableDeclarationRegistry<T, U> {
         if (this.registries.has(key)) {
-            return this.registries.get(key) as unknown as ImmutableRegistry<T, U>;
+            return this.registries.get(key) as unknown as ImmutableDeclarationRegistry<T, U>;
         }
         else {
             throw new RegistryError(`レジストリ "${key.toString()}" が見つかりませんでした`);
@@ -515,42 +515,42 @@ class ImmutableRegistries {
      * @param other 他のインスタンス
      * @param overwrite `true` の場合, 渡されたインスタンスの状態を無視して定義を上書きする
      */
-    public writeTo(other: Registries, overwrite: boolean): void {
+    public writeTo(other: DeclarationRegistries, overwrite: boolean): void {
         for (const [registryKey, registry] of this.registries) {
             registry.writeTo(other.get(registryKey), overwrite);
         }
     }
 }
 
-export class Registries extends ImmutableRegistries {
+export class DeclarationRegistries extends ImmutableDeclarationRegistries {
     public constructor();
 
-    public constructor(registries: ImmutableRegistries);
+    public constructor(registries: ImmutableDeclarationRegistries);
 
-    public constructor(registires?: ImmutableRegistries) {
+    public constructor(registires?: ImmutableDeclarationRegistries) {
         if (registires) super(registires);
         else super();
     }
 
-    public override get<T, U extends Declaration<unknown>>(key: RegistryKey<T, U>): Registry<T, U> {
-        return super.get(key) as Registry<T, U>;
+    public override get<T, U extends Declaration<unknown>>(key: DeclarationRegistryKey<T, U>): DeclarationRegistry<T, U> {
+        return super.get(key) as DeclarationRegistry<T, U>;
     }
 
     /**
      * 読み取り専用のコピーを作成する関数
      * @returns 作成されたインスタンス
      */
-    public toImmutable(): ImmutableRegistries {
-        return new ImmutableRegistries(this);
+    public toImmutable(): ImmutableDeclarationRegistries {
+        return new ImmutableDeclarationRegistries(this);
     }
 
     /**
      * 基本的な演算子や定数・関数の定義が既に行われた読み取り専用レジストリ
      */
-    public static readonly DEFAULT: ImmutableRegistries = (() => {
-        const registries = new Registries();
+    public static readonly DEFAULT: ImmutableDeclarationRegistries = (() => {
+        const registries = new DeclarationRegistries();
 
-        registries.get(RegistryKey.OPERATOR).registerByDescriptor({
+        registries.get(DeclarationRegistryKey.OPERATOR).registerByDescriptor({
             "+": {
                 priority: OperatorPriority.POLYNOMIAL,
                 operate(x, y) {
@@ -631,7 +631,7 @@ export class Registries extends ImmutableRegistries {
             }
         });
 
-        registries.get(RegistryKey.CONSTANT).registerByDescriptor({
+        registries.get(DeclarationRegistryKey.CONSTANT).registerByDescriptor({
             "NaN": {
                 value: NaN
             },
@@ -649,7 +649,7 @@ export class Registries extends ImmutableRegistries {
             }
         });
 
-        registries.get(RegistryKey.FUNCTION).registerByDescriptor({
+        registries.get(DeclarationRegistryKey.FUNCTION).registerByDescriptor({
             "random": {
                 argCount: FunctionArgCount.NO,
                 call: Math.random
@@ -773,7 +773,7 @@ export interface EvaluatorCreateOptions {
      * 宣言のコピー元レジストリ    
      * 指定がない場合は空のレジストリが使用される
      */
-    copySourceRegistries?: ImmutableRegistries;
+    copySourceRegistries?: ImmutableDeclarationRegistries;
 };
 
 /**
@@ -792,7 +792,7 @@ export class ImmutableCalcExpEvaluator {
     /**
      * 宣言のレジストリを纏めたオブジェクト
      */
-    public readonly registries: ImmutableRegistries;
+    public readonly registries: ImmutableDeclarationRegistries;
 
     /**
      * このインスタンスの設定
@@ -805,7 +805,7 @@ export class ImmutableCalcExpEvaluator {
 
     public constructor(options?: EvaluatorCreateOptions) {
         this.configuration = ImmutableCalcExpEvaluator.mergeWithDefaultConfiguration(options?.configuration);
-        this.registries = options?.copySourceRegistries === undefined ? new Registries().toImmutable() : new Registries(options.copySourceRegistries).toImmutable();
+        this.registries = options?.copySourceRegistries === undefined ? new DeclarationRegistries().toImmutable() : new DeclarationRegistries(options.copySourceRegistries).toImmutable();
     }
 
     private isOver(): boolean {
@@ -964,7 +964,7 @@ export class ImmutableCalcExpEvaluator {
         let value: number = this.operateWithAnotherFactor(this.factor());
 
         a: while (!this.isOver()) {
-            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.MONOMIAL);
+            const operators = this.registries.get(DeclarationRegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.MONOMIAL);
 
             for (const operator of operators) {
                 if (this.next(operator.name)) {
@@ -989,7 +989,7 @@ export class ImmutableCalcExpEvaluator {
         let value: number = this.monomial();
 
         a: while (!this.isOver()) {
-            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.POLYNOMIAL);
+            const operators = this.registries.get(DeclarationRegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.POLYNOMIAL);
 
             for (const operator of operators) {
                 if (this.next(operator.name)) {
@@ -1014,7 +1014,7 @@ export class ImmutableCalcExpEvaluator {
         let value: number = num;
 
         a: while (!this.isOver()) {
-            const operators = this.registries.get(RegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.FACTOR);
+            const operators = this.registries.get(DeclarationRegistryKey.OPERATOR).lookup.getInNameLongestOrder(v => v.priority === OperatorPriority.FACTOR);
 
             for (const operator of operators) {
                 if (this.next(operator.name)) {
@@ -1098,7 +1098,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private isConst(): boolean {
-        for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
+        for (const constant of this.registries.get(DeclarationRegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
             if (this.test(constant.name)) {
                 return true;
             }
@@ -1108,7 +1108,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private getConst(): ConstantDeclaration {
-        for (const constant of this.registries.get(RegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
+        for (const constant of this.registries.get(DeclarationRegistryKey.CONSTANT).lookup.getInNameLongestOrder()) {
             if (this.next(constant.name)) {
                 return constant.value;
             }
@@ -1118,7 +1118,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private isFunction(): boolean {
-        for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
+        for (const func of this.registries.get(DeclarationRegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
             if (this.test(func.name, CHARACTER_DEFINITION.PARENTHESIS[0])) {
                 return true;
             }
@@ -1128,7 +1128,7 @@ export class ImmutableCalcExpEvaluator {
     }
 
     private getFunction(): FunctionDeclaration {
-        for (const func of this.registries.get(RegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
+        for (const func of this.registries.get(DeclarationRegistryKey.FUNCTION).lookup.getInNameLongestOrder()) {
             if (this.test(func.name, CHARACTER_DEFINITION.PARENTHESIS[0])) {
                 this.next(func.name);
                 return func.value;
@@ -1208,12 +1208,12 @@ export class ImmutableCalcExpEvaluator {
 export class CalcExpEvaluator extends ImmutableCalcExpEvaluator {
     public override readonly configuration: EvaluatorConfiguration;
 
-    public override readonly registries: Registries;
+    public override readonly registries: DeclarationRegistries;
 
     public constructor(options?: EvaluatorCreateOptions) {
         super(options);
         this.configuration = ImmutableCalcExpEvaluator.mergeWithDefaultConfiguration(options?.configuration);
-        this.registries = options?.copySourceRegistries === undefined ? new Registries() : new Registries(options.copySourceRegistries);
+        this.registries = options?.copySourceRegistries === undefined ? new DeclarationRegistries() : new DeclarationRegistries(options.copySourceRegistries);
     }
 
     public override clone(): CalcExpEvaluator {

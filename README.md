@@ -14,13 +14,13 @@
 <br>或いは使えるのであれば[これ](/src/CalcExpEvaluator.ts)でもいい
 
 ### 計算
-`Registries.DEFAULT`は既にいろいろ定義されたレジストリ
+`DeclarationRegistries.DEFAULT`は既にいろいろ定義されたレジストリ
 <br>`new CalcExpEvaluator()`で何も定義されていないインスタンスを作成することも可能
 
 ```ts
-import { CalcExpEvaluator, Registries } from "./CalcExpEvaluator"; // 一つのファイルに全部まとめてある
+import { CalcExpEvaluator, DeclarationRegistries } from "./CalcExpEvaluator"; // 一つのファイルに全部まとめてある
 
-const evaluator = new CalcExpEvaluator({ copySourceRegistries: Registries.DEFAULT });
+const evaluator = new CalcExpEvaluator({ copySourceRegistries: DeclarationRegistries.DEFAULT });
 
 console.log(evaluator.evaluate("1 + 1")); // 2
 ```
@@ -29,25 +29,25 @@ console.log(evaluator.evaluate("1 + 1")); // 2
 `CalcExpEvaluator#registries`は演算子・関数・定数のレジストリ
 
 ```ts
-import { CalcExpEvaluator, RegistryKey, FunctionArgCount, OperatorPriority, Registries } from "./CalcExpEvaluator";
+import { CalcExpEvaluator, DeclarationRegistryKey, FunctionArgCount, OperatorPriority, DeclarationRegistries } from "./CalcExpEvaluator";
 
-const evaluator = new CalcExpEvaluator({ copySourceRegistries: Registries.DEFAULT });
+const evaluator = new CalcExpEvaluator({ copySourceRegistries: DeclarationRegistries.DEFAULT });
 
-evaluator.registries.get(RegistryKey.OPERATOR).register("ぷらす", {
+evaluator.registries.get(DeclarationRegistryKey.OPERATOR).register("ぷらす", {
     priority: OperatorPriority.POLYNOMIAL,
     operate(x, y) {
         return x + y;
     }
 });
 
-evaluator.registries.get(RegistryKey.FUNCTION).register("sum", {
+evaluator.registries.get(DeclarationRegistryKey.FUNCTION).register("sum", {
     argCount: FunctionArgCount.VAR,
     call(args) {
         return args.reduce((a, b) => a + b, 0);
     }
 });
 
-evaluator.registries.get(RegistryKey.CONSTANT).register("g", {
+evaluator.registries.get(DeclarationRegistryKey.CONSTANT).register("g", {
     value: -9.8
 });
 
@@ -57,20 +57,20 @@ console.log(evaluator.evaluate("2 * g")); // -19.6
 ```
 
 ### 定義の削除・確認
-`Registry#unregister`は演算子・関数・定数の定義を削除する関数
-<br>`Registry#lookup`は演算子・関数・定数の定義を取得するためのオブジェクト
+`DeclarationRegistry#unregister`は演算子・関数・定数の定義を削除する関数
+<br>`DeclarationRegistry#lookup`は演算子・関数・定数の定義を取得するためのオブジェクト
 
 ```ts
-import { CalcExpEvaluator, Registries, RegistryKey } from "./CalcExpEvaluator";
+import { CalcExpEvaluator, DeclarationRegistries, DeclarationRegistryKey } from "./CalcExpEvaluator";
 
-const evaluator = new CalcExpEvaluator({ copySourceRegistries: Registries.DEFAULT });
-const operators = evaluator.registries.get(RegistryKey.OPERATOR);
+const evaluator = new CalcExpEvaluator({ copySourceRegistries: DeclarationRegistries.DEFAULT });
+const operators = evaluator.registries.get(DeclarationRegistryKey.OPERATOR);
 
 console.log(operators.lookup.getInNameLongestOrder()); // [+, -, *, /, %, ...]
 operators.unregister("/");
 console.log(operators.lookup.getInNameLongestOrder()); // [+, -, *, %, ...]
 
-console.log(evaluator.registries.get(RegistryKey.CONSTANT).lookup.has("NaN")); // true
+console.log(evaluator.registries.get(DeclarationRegistryKey.CONSTANT).lookup.has("NaN")); // true
 ```
 
 その他の例は[test.ts](./src/test.ts)を参照のこと
